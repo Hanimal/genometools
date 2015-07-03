@@ -1,49 +1,48 @@
 #include "core/encseq_api.h"
 #include "core/str_api.h"
+#include "assert.h"
+#include "core/error.h"
+#include "stdbool.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>
 #include <math.h>
-#include "assert.h"
-#include "stdbool.h"
-#include "f_score.h"
 
-GtUword min(GtUword fst, GtUword scd)
+#include "fscore.h"
+
+GtUword min(GtUword fst, GtUword snd)
 {
-	if(fst < scd)
+	if(fst < snd)
 		return (fst);
 	else
-		return (scd);
+		return (snd);
 }
 
-GtUword *match_alphabetcode(GtAlphabet *alpha, GtError *err)
+void match_alphabetcode(GtAlphabet *alpha, 
+							GtUword *alpha_code,
+							GtError *err)
 {
 	gt_error_check(err);
 	assert(alpha != NULL);
     GtUword i;
-    GtUword *alpha_tab;
     GtUword r;
     const GtUchar* alphabet;
-    bool haserr = false;
     
-    alpha_tab = malloc(sizeof(GtUword)*UCHAR_MAX);
     r = gt_alphabet_size(alpha);
     alphabet = gt_alphabet_characters(alpha);
 
     for(i=0; i<UCHAR_MAX; i++)
-        alpha_tab[i] = -1;
+        alpha_code[i] = -1;
     for(i=0; i<r; i++)
     {
-        if(alpha_tab[(GtUword)alphabet[i]] ==-1)
-            alpha_tab[(GtUword)alphabet[i]] = i;
+        if(alpha_code[(GtUword)alphabet[i]] ==-1)
+            alpha_code[(GtUword)alphabet[i]] = i;
         else
         {
             gt_error_set(err,"The same symbol %c occured more than" 
 						"once in the given alphabet\n", alphabet[i]);
-			haserr = true;
 		}
     }
-    return((haserr)? NULL : alpha_tab);
 }
 /*
  * encseq : contains the sequence u and v
@@ -51,19 +50,26 @@ GtUword *match_alphabetcode(GtAlphabet *alpha, GtError *err)
  * k : length of kmer
  * alpha_code : integercode for each symbol of the alphabet
  */
-GtUword f_score(GtEncseq *encseq, GtUword r, GtUword k, GtUword *alpha_code, GtError *err)
+GtUword f_score(GtEncseq *encseq, 
+				GtUword seqnum_u, 
+				GtUword seqnum_v,
+				GtUword r, 
+				GtUword k, 
+				GtUword *alpha_code, 
+				GtError *err)
 {
 	gt_error_check(err);
     assert(encseq != NULL && alpha_code != NULL);
     assert(r > 0 && k > 0);
     
-    GtUword read_at = 0, 
-			i = 0, 
-			tmp = 0, 
-			int_code=0, 
-			size = 10, 
+    GtUword i, 
+			tmp, 
+			dist,
+			pos_u,
+			pos_v,
+			int_code = 0, 
 			idx_C = 0,
-			dist = 0;
+			size = 10;
 			
     GtUword *tu, 
 			*tv, 
@@ -72,15 +78,20 @@ GtUword f_score(GtEncseq *encseq, GtUword r, GtUword k, GtUword *alpha_code, GtE
 
     GtEncseqReader* reader;
     
-    GtUchar symbol_old, 
-			symbol_new;
+    GtUchar symbol_old = NULL, 
+			symbol_new = NULL;
+			
+	bool haserr = false;
+	
+	pos_u = gt_encseq_seqstartpos(encseq, seqnum_u);
+	pos_v = gt_encseq_seqstartpos(encseq, seqnum_v);
     
     tu = calloc(pow(r, k), sizeof(GtUword));
     tv = calloc(pow(r, k), sizeof(GtUword));
     C = malloc(sizeof(GtUword)*size);
     reader = gt_encseq_create_reader_with_readmode(encseq, 
                                                    GT_READMODE_FORWARD,
-                                                   0);
+                                                   pos_u);
                                                    
     /*define factor for position in sequence*/
     factor=malloc(sizeof(GtUword)*k);
@@ -91,7 +102,7 @@ GtUword f_score(GtEncseq *encseq, GtUword r, GtUword k, GtUword *alpha_code, GtE
     /*integer_code for first kmer in u*/
     for(i = 0; i < k; i++)
     {   
-		if(gt_encseq_position_is_separator(encseq, read_at, 
+		if(gt_encseq_position_is_separator(encseq, pos_u, 
 											GT_READMODE_FORWARD))
 			break;         
 		symbol_old = gt_encseq_reader_next_decoded_char(reader);		
@@ -99,38 +110,47 @@ GtUword f_score(GtEncseq *encseq, GtUword r, GtUword k, GtUword *alpha_code, GtE
         if(tmp == -1)
             return(INT_MAX);
         int_code += tmp*factor[k-1-i];
-        read_at++;
+        pos_u++;
     }
     tu[int_code]++;
 
 	/*integer_code for the rest of u*/
-    while(!(gt_encseq_position_is_separator(encseq, read_at, 
-											GT_READMODE_FORWARD)))
+    while(!(gt_encseq_position_is_separator(encseq, pos_u, 
+									GT_READMODE_FORWARD)) && !haserr)
 	{
-		GtUchar symbol_new = gt_encseq_reader_next_decoded_char(reader);
+		symbol_new = gt_encseq_reader_next_decoded_char(reader);
 		tmp = alpha_code[(GtUword)symbol_new];
 		if(tmp == -1)
-            return(INT_MAX);
+        {
+            gt_error_set(err,"The same symbol "GT_WU" does not occur"
+							"in the given alphabet\n", tmp);
+			haserr = true;
+		}
         int_code = (int_code-alpha_code[(GtUword)symbol_old]*factor[k-1])*r+tmp; 
         tu[int_code]++; 
         symbol_old = symbol_new;
-        read_at++;
+        pos_u++;
 	}
     
 	/*integer_code for first kmer in v*/
     int_code=0;
-    read_at++;
+    gt_encseq_reader_reinit_with_readmode(reader, encseq,
+                                          GT_READMODE_FORWARD, pos_v);
     for(i = 0; i < k; i++)
     {  		
-		if(gt_encseq_position_is_separator(encseq, read_at, 
-											GT_READMODE_FORWARD))
+		if(gt_encseq_position_is_separator(encseq, pos_v, 
+										GT_READMODE_FORWARD) || haserr)
 			break;         
 		symbol_old = gt_encseq_reader_next_decoded_char(reader);		
         tmp = alpha_code[(GtUword)symbol_old];
         if(tmp == -1)
-            return(INT_MAX);
+        {
+            gt_error_set(err,"The same symbol "GT_WU" does not occur"
+							"in the given alphabet\n", tmp);
+			haserr = true;
+		}
         int_code += tmp*factor[k-1-i];
-        read_at++;
+        pos_v++;
     }
     /*if kmer occurs in both sequences, then add to C*/
     tv[int_code]++;
@@ -141,10 +161,10 @@ GtUword f_score(GtEncseq *encseq, GtUword r, GtUword k, GtUword *alpha_code, GtE
 	}
         
 	/*integer_code for te rest of v*/
-    while(!(gt_encseq_position_is_separator(encseq, read_at, 
-											GT_READMODE_FORWARD)))
+    while(!(gt_encseq_position_is_separator(encseq, pos_v, 
+									GT_READMODE_FORWARD)) && !haserr)
 	{
-		GtUchar symbol_new = gt_encseq_reader_next_decoded_char(reader);
+		symbol_new = gt_encseq_reader_next_decoded_char(reader);
 		tmp = alpha_code[(GtUword)symbol_new];
 		if(tmp == -1)
             return(INT_MAX);
@@ -161,12 +181,11 @@ GtUword f_score(GtEncseq *encseq, GtUword r, GtUword k, GtUword *alpha_code, GtE
 			idx_C++;
 		}
         symbol_old = symbol_new;
-        read_at++;
+        pos_v++;
 	}
-
-    
-    GtUword length_u = gt_encseq_seqlength(encseq, 0);
-    GtUword length_v = gt_encseq_seqlength(encseq, 1);
+   
+    GtUword length_u = gt_encseq_seqlength(encseq, seqnum_u);
+    GtUword length_v = gt_encseq_seqlength(encseq, seqnum_v);
     
     tmp = 0;
     for(i = 0; i < idx_C; i++)
@@ -177,5 +196,5 @@ GtUword f_score(GtEncseq *encseq, GtUword r, GtUword k, GtUword *alpha_code, GtE
     free(tu);
     free(tv);
     gt_encseq_reader_delete(reader);
-    return(dist);
+    return((haserr)? UINT_MAX : dist);
 }
