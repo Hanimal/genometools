@@ -18,79 +18,146 @@
 //#include "core/str_array_api.h"
 
 #include "fscore.h"
+#define SIZE 5
 
 typedef struct{
-    GtUword *tu, 
-			*tv,
-			*C;
-}Score;
+    GtUword *C,
+            pos,
+            size;
+}Kmers;
 
-void add_to_C(set_of_qword *sq, int icode)
+void add_to_kmers_table(Kmers *kmers, GtUword kmercode)
 {
-    if(sq->j==sq->size)
+    if(kmers->pos == kmers->size)
     {
-        sq->size=sq->size+SIZE;
-        sq->C=(int*)realloc(sq->C, sq->size*sizeof(int));
+        kmers->size = kmers->size+SIZE;
+        kmers->C = (GtUword*)realloc(kmers->C, kmers->size*sizeof(GtUword));
     }
-    sq->C[sq->j]=icode;
-    sq->j++;
+    kmers->C[kmers->pos] = kmercode;
+    kmers->pos++;
 }
 
-GtUword gt_get_kmercodes(const GtEncseq *encseq, 
-								unsigned int kmerlen)
+Kmers* new_kmers_table()
+{
+  Kmers *kmers;
+  kmers = malloc(sizeof(Kmers));
+  kmers->C = malloc(SIZE*sizeof(GtUword));
+  kmers->size = SIZE;
+  kmers->pos = 0;
+  return kmers;
+}
+
+void delete_kmers_table(Kmers *kmers)
+{
+  free(kmers->C);
+  free(kmers);
+}
+
+void gt_get_kmercodes(const GtEncseq *encseq, 
+                         GtUword kmerlen,
+                         GtUword **tau)
 {
   GtKmercodeiterator *kc_iter;
   const GtKmercode *kmercode;
-  GtUword numberofkmerscollected = 0;
-
+  GtUword seqnum;
   gt_assert(encseq != NULL);
-  kc_iter = gt_kmercodeiterator_encseq_new(encseq, GT_READMODE_FORWARD, kmerlen,
+  kc_iter = gt_kmercodeiterator_encseq_new(encseq, 
+                                           GT_READMODE_FORWARD, 
+                                           kmerlen,
                                            0);
+                                           
   while ((kmercode = gt_kmercodeiterator_encseq_next(kc_iter)) != NULL) 
   {
-    if (!kmercode->definedspecialposition) 
+    
+    seqnum = gt_encseq_seqnum(encseq,
+                            gt_kmercodeiterator_encseq_get_currentpos(kc_iter));
+    if (!(kmercode->definedspecialposition)) 
     {
+      tau[seqnum][kmercode->code]++;
       /* store (kmercode, seqnum, endpos) in array */
-
-      //process kmercode->code;
-
     }
   }
   gt_kmercodeiterator_delete(kc_iter);
-  return numberofkmerscollected;
 }
 
-static GtEncseq *gt_encseq_get_encseq(const char *seqfile,
-                                      GtError *err)
+GtUword** new_tau(GtUword numofsequences, GtUword r, GtUword k)
 {
-  GtEncseqLoader *encseq_loader;
-  GtEncseq *encseq;
-  int had_err = 0;
-  gt_error_check(err);
-  gt_assert(seqfile);
-  
-  encseq_loader = gt_encseq_loader_new();
-  if (!(encseq = gt_encseq_loader_load(encseq_loader, seqfile, err)))
-    had_err = -1;
+  GtUword **tau;
+  tau = malloc((numofsequences)*sizeof(GtUword*));
+  *tau = calloc((numofsequences),(pow(r, k))*sizeof(GtUword));
+  return tau;
+}
 
-  gt_encseq_loader_delete(encseq_loader);
-  if (!had_err) 
-  {
-    if (!gt_encseq_has_description_support(encseq))
-      gt_warning("Missing description support for file %s", seqfile);
-    return encseq;
-  } 
+GtUword min(GtUword fst, GtUword snd)
+{
+  if(fst < snd)
+    return (fst);
   else
-    return NULL;
+    return (snd);
 }
 
-/*GtUword min(GtUword fst, GtUword snd)
+Score *f_score(GtEncseq *encseq_first, 
+                GtEncseq *encseq_second, 
+                GtUword r, 
+                GtUword k, 
+                GtError *err)
 {
-	if(fst < snd)
-		return (fst);
-	else
-		return (snd);
-}*/
+  gt_error_check(err);
+  assert(encseq_first != NULL && encseq_second != NULL);
+  assert(r > 0 && k > 0);
+    
+  GtUword numofsequences_first;
+  GtUword numofsequences_second;
+  GtUword **tu,
+          **tv,
+          i,
+          j,
+          l,
+          p,
+          dist = 0,
+          tmp = 0,
+          score_pos = 0;
+  Kmers *kmers;
+  Score *score;
+  
+  
+  
+  numofsequences_first = gt_encseq_num_of_sequences(encseq_first);
+  tu = new_tau(numofsequences_first, r, k);
+  numofsequences_second = gt_encseq_num_of_sequences(encseq_second);
+  tv = new_tau(numofsequences_second, r, k);
+  score = malloc(sizeof(Score)*(numofsequences_first*numofsequences_second));
+  
+  gt_get_kmercodes(encseq_first, 
+                   k,
+                   tu);
+  gt_get_kmercodes(encseq_second, 
+                   k,
+                   tv);
+  for(i = 0; i < numofsequences_first; i++)
+  {
+    for(j = 0; j < numofsequences_second; j++)
+    {
+      kmers = new_kmers_table();
+      for(l = 0; l < pow(r,k); l++)
+      {
+        if(tu[i][l] == tv[j][l])
+          add_to_kmers_table(kmers, l);
+      }
+      GtUword length_u = gt_encseq_seqlength(encseq_first, i);
+      GtUword length_v = gt_encseq_seqlength(encseq_second, j);
+      for(p = 0; p < kmers->pos; p++)
+        tmp += min(tu[i][kmers->C[p]],tv[j][kmers->C[p]]);
+      dist = tmp/(min(length_u, length_v)-k+1);
+      score[score_pos].dist = dist;
+      score[score_pos].seqnum_u = i;
+      score[score_pos].seqnum_v = j;
+      score_pos++;
+      delete_kmers_table(kmers);
+    }
+  }
+  return score;
+}
 
 /*void match_alphabetcode(GtAlphabet *alpha, 
 							GtUword *alpha_code,
@@ -124,7 +191,7 @@ static GtEncseq *gt_encseq_get_encseq(const char *seqfile,
  * k : length of kmer
  * alpha_code : integercode for each symbol of the alphabet
  */
-/*GtUword f_score(GtEncseq *encseq, 
+/*GtUword f_score2(GtEncseq *encseq, 
 				GtUword seqnum_u, 
 				GtUword seqnum_v,
 				GtUword r, 
