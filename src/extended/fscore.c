@@ -1,24 +1,98 @@
 #include "core/encseq_api.h"
 #include "core/str_api.h"
-#include "assert.h"
+#include "core/codetype.h"
 #include "core/error.h"
+#include "core/warning_api.h"
+#include "core/alphabet_api.h"
+
+#include "match/sfx-mappedstr.h"
+
 #include "stdbool.h"
+#include "assert.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>
 #include <math.h>
 
+//#include "core/str_api.h"
+//#include "core/str_array_api.h"
+
 #include "fscore.h"
 
-GtUword min(GtUword fst, GtUword snd)
+typedef struct{
+    GtUword *tu, 
+			*tv,
+			*C;
+}Score;
+
+void add_to_C(set_of_qword *sq, int icode)
+{
+    if(sq->j==sq->size)
+    {
+        sq->size=sq->size+SIZE;
+        sq->C=(int*)realloc(sq->C, sq->size*sizeof(int));
+    }
+    sq->C[sq->j]=icode;
+    sq->j++;
+}
+
+GtUword gt_get_kmercodes(const GtEncseq *encseq, 
+								unsigned int kmerlen)
+{
+  GtKmercodeiterator *kc_iter;
+  const GtKmercode *kmercode;
+  GtUword numberofkmerscollected = 0;
+
+  gt_assert(encseq != NULL);
+  kc_iter = gt_kmercodeiterator_encseq_new(encseq, GT_READMODE_FORWARD, kmerlen,
+                                           0);
+  while ((kmercode = gt_kmercodeiterator_encseq_next(kc_iter)) != NULL) 
+  {
+    if (!kmercode->definedspecialposition) 
+    {
+      /* store (kmercode, seqnum, endpos) in array */
+
+      //process kmercode->code;
+
+    }
+  }
+  gt_kmercodeiterator_delete(kc_iter);
+  return numberofkmerscollected;
+}
+
+static GtEncseq *gt_encseq_get_encseq(const char *seqfile,
+                                      GtError *err)
+{
+  GtEncseqLoader *encseq_loader;
+  GtEncseq *encseq;
+  int had_err = 0;
+  gt_error_check(err);
+  gt_assert(seqfile);
+  
+  encseq_loader = gt_encseq_loader_new();
+  if (!(encseq = gt_encseq_loader_load(encseq_loader, seqfile, err)))
+    had_err = -1;
+
+  gt_encseq_loader_delete(encseq_loader);
+  if (!had_err) 
+  {
+    if (!gt_encseq_has_description_support(encseq))
+      gt_warning("Missing description support for file %s", seqfile);
+    return encseq;
+  } 
+  else
+    return NULL;
+}
+
+/*GtUword min(GtUword fst, GtUword snd)
 {
 	if(fst < snd)
 		return (fst);
 	else
 		return (snd);
-}
+}*/
 
-void match_alphabetcode(GtAlphabet *alpha, 
+/*void match_alphabetcode(GtAlphabet *alpha, 
 							GtUword *alpha_code,
 							GtError *err)
 {
@@ -43,14 +117,14 @@ void match_alphabetcode(GtAlphabet *alpha,
 						"once in the given alphabet\n", alphabet[i]);
 		}
     }
-}
+}*/
 /*
  * encseq : contains the sequence u and v
  * r : length of alphabet
  * k : length of kmer
  * alpha_code : integercode for each symbol of the alphabet
  */
-GtUword f_score(GtEncseq *encseq, 
+/*GtUword f_score(GtEncseq *encseq, 
 				GtUword seqnum_u, 
 				GtUword seqnum_v,
 				GtUword r, 
@@ -93,13 +167,13 @@ GtUword f_score(GtEncseq *encseq,
                                                    GT_READMODE_FORWARD,
                                                    pos_u);
                                                    
-    /*define factor for position in sequence*/
+    //define factor for position in sequence
     factor=malloc(sizeof(GtUword)*k);
     factor[0]=1;
     for(i=1; i<k; i++)
         factor[i]=factor[i-1]*r;
         
-    /*integer_code for first kmer in u*/
+    //integer_code for first kmer in u
     for(i = 0; i < k; i++)
     {   
 		if(gt_encseq_position_is_separator(encseq, pos_u, 
@@ -114,7 +188,7 @@ GtUword f_score(GtEncseq *encseq,
     }
     tu[int_code]++;
 
-	/*integer_code for the rest of u*/
+	//integer_code for the rest of u
     while(!(gt_encseq_position_is_separator(encseq, pos_u, 
 									GT_READMODE_FORWARD)) && !haserr)
 	{
@@ -132,7 +206,7 @@ GtUword f_score(GtEncseq *encseq,
         pos_u++;
 	}
     
-	/*integer_code for first kmer in v*/
+	//integer_code for first kmer in v
     int_code=0;
     gt_encseq_reader_reinit_with_readmode(reader, encseq,
                                           GT_READMODE_FORWARD, pos_v);
@@ -152,7 +226,7 @@ GtUword f_score(GtEncseq *encseq,
         int_code += tmp*factor[k-1-i];
         pos_v++;
     }
-    /*if kmer occurs in both sequences, then add to C*/
+    //if kmer occurs in both sequences, then add to C
     tv[int_code]++;
     if(tu[int_code] > 0)
     {
@@ -160,7 +234,7 @@ GtUword f_score(GtEncseq *encseq,
 		idx_C++;
 	}
         
-	/*integer_code for te rest of v*/
+	//integer_code for te rest of v
     while(!(gt_encseq_position_is_separator(encseq, pos_v, 
 									GT_READMODE_FORWARD)) && !haserr)
 	{
@@ -197,4 +271,4 @@ GtUword f_score(GtEncseq *encseq,
     free(tv);
     gt_encseq_reader_delete(reader);
     return((haserr)? UINT_MAX : dist);
-}
+}*/
