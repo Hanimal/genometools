@@ -12,13 +12,6 @@
 #include "extended/fscore.h"
 #include "gt_scores.h"
 
-typedef struct{
-    GtUword score,
-            seqnum_u,
-            seqnum_v;
-}Fscore;
-
-
 static GtEncseq *gt_encseq_get_encseq(const char *seqfile,
                                              GtError *err)
 {
@@ -45,67 +38,54 @@ static GtEncseq *gt_encseq_get_encseq(const char *seqfile,
 }
 
 
-int gt_fscore(int argc, const char **argv, GtError *err);
+int gt_scores(int argc, const char **argv, GtError *err)
 {
-  if(argc != 4)
+  if(argc != 5)
   {
-    printf("USAGE: %s <alphabetfile> <sequencefile> <k>", argv[0]);
+    printf("USAGE: %s <sequencefile> <sequencefile> <alphabetsize> <k>\n", argv[0]);
     return(EXIT_FAILURE);
   }
   else
   {
-    GtEncseq *encseq;
-    GtAlphabet *alpha; 
-    Fscore *fscore;
-    GtUword *alpha_code;
+	gt_error_check(err);
+    GtEncseq *encseq_first;
+    GtEncseq *encseq_second;
+    FScore *score;
     GtUword k, 
-      i,
-      j,
-      file_num,
-      r,
-      idx,
-      struct_size = 0,
-      size = 10;
+			r,
+			i;
   
-    sscanf(argv[3], GT_WU, &k);
-    alpha_code = malloc(sizeof(GtUword)*UCHAR_MAX);
-    fscore = malloc(sizeof(Fscore)*size);
-  
-    //err = gt_error_new();
-    //gt_error_set_progname(err, argv[0]);
-    encseq = gt_encseq_get_encseq(argv[1], err);
-    alpha = gt_alphabet_new_from_file_no_suffix(argv[1], err);
-    gt_error_check(err);
-    r = gt_alphabet_size(alpha);
-    match_alphabetcode(alpha, alpha_code, err);
-    gt_error_check(err);
-  
-    file_num = gt_encseq_num_of_files(encseq);
-    idx = 0;
-    for(i = 0; i < file_num; i++)
+    if((sscanf(argv[4], GT_WU, &k) != 1) || k < 1)
     {
-      for(j = i+1; j < file_num; j++)
-      {
-        /*GtUword score = f_score(encseq, 
-                    i, 
-                    j,
-                    r, 
-                    k, 
-                    alpha_code, 
-                    err);
-        if(struct_size == size)
-        {
-          size += 10;
-          fscore = realloc(fscore, size*sizeof(Fscore));
-        }
-        fscore[idx].score = score;
-        fscore[idx].seqnum_u = i;
-        fscore[idx].seqnum_v = j;
-        idx++;
-        struct_size++;*/
-      }
-    }
-    gt_encseq_delete(encseq);
+      printf("%s is no valid input for k\n", argv[4]);
+      return(EXIT_FAILURE);
+	}
+	if((sscanf(argv[3], GT_WU, &r) != 1) || r < 1)
+    {
+      printf("%s is no valid input for the alphabetsize\n", argv[3]);
+      return(EXIT_FAILURE);
+	}
+  
+    encseq_first = gt_encseq_get_encseq(argv[1], err);
+    gt_error_check(err);
+    encseq_second = gt_encseq_get_encseq(argv[2], err);
+    gt_error_check(err);
+  
+    score = fscore(encseq_first, 
+                    encseq_second, 
+					r, 
+					k, 
+					err);
+	
+	for( i = 0; i < score->pos; i++)
+	{
+		printf("Fscore between sequence "GT_WU" and "GT_WU" is %.3f.\n", 
+				score[i].seqnum_u, score[i].seqnum_v, score[i].dist);
+	}
+	
+    gt_encseq_delete(encseq_first);
+    gt_encseq_delete(encseq_second);
+    free(score);
     return(EXIT_SUCCESS);
   }
 }
