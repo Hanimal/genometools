@@ -4,10 +4,11 @@
 typedef struct{
   GtUword seqnum_u,
           seqnum_v,
-          dist;
-}Score;
+          pos;
+  float dist;
+}FScore;
 
-Score* f_score(GtEncseq *encseq_first, 
+FScore* fscore(GtEncseq *encseq_first, 
                 GtEncseq *encseq_second, 
                 GtUword r, 
                 GtUword k, 
