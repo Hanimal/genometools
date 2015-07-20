@@ -49,7 +49,6 @@
 #include "tools/gt_skproto.h"
 #include "tools/gt_sortbench.h"
 #include "tools/gt_trieins.h"
-#include "tools/gt_scores.h"
 #include "tools/gt_dev.h"
 
 static void* gt_dev_arguments_new(void)
@@ -67,7 +66,6 @@ static void* gt_dev_arguments_new(void)
   gt_toolbox_add(dev_toolbox, "patternmatch", gt_patternmatch);
   gt_toolbox_add(dev_toolbox, "regioncov", gt_regioncov);
   gt_toolbox_add(dev_toolbox, "trieins", gt_trieins);
-  gt_toolbox_add(dev_toolbox, "scores", gt_scores);
   gt_toolbox_add_tool(dev_toolbox, "compbits", gt_compressedbits());
   gt_toolbox_add_tool(dev_toolbox, "condenser", gt_condenser());
   gt_toolbox_add_tool(dev_toolbox, "consensus_sa", gt_consensus_sa_tool());
