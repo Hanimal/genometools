@@ -84,46 +84,74 @@ FScore *fscore(GtEncseq *encseq_first,
                 GtError *err)
 {
   gt_error_check(err);
-  assert(encseq_first != NULL && encseq_second != NULL);
+  assert(encseq_first != NULL);
   assert(r > 0 && k > 0);
     
-  GtUword numofseqfirst;
-  GtUword numofseqsecond;
+  GtUword numofseqfirst,
+          numofseqsecond;
   GtUword **tu,
           **tv,
           i, j, l,
           tmp = 0;
   float dist = 0;
   FScore *score;
-    
+  
   numofseqfirst = gt_encseq_num_of_sequences(encseq_first);
-  numofseqsecond = gt_encseq_num_of_sequences(encseq_second);
   tu = new_tau(numofseqfirst, r, k);
-  tv = new_tau(numofseqsecond, r, k);
-  
-  score = malloc(sizeof(FScore)*((numofseqfirst*numofseqsecond)+1));
-  score->pos = 0;
-  
   gt_get_kmercodes(encseq_first, k, tu);
-  gt_get_kmercodes(encseq_second, k, tv);
   
-  for(i = 0; i < numofseqfirst; i++)
-  {
-    for(j = 0; j < numofseqsecond; j++)
+  if(encseq_first && encseq_second)
+  {  
+    numofseqsecond = gt_encseq_num_of_sequences(encseq_second);
+    tv = new_tau(numofseqsecond, r, k);
+    gt_get_kmercodes(encseq_second, k, tv);
+    
+    score = malloc(sizeof(FScore)*((numofseqfirst*numofseqsecond)+1));
+    score->pos = 0;
+    
+    for(i = 0; i < numofseqfirst; i++)
     {
-      tmp = 0;
-      for(l = 0; l < pow(r,k); l++)
+      for(j = 0; j < numofseqsecond; j++)
       {
-        if(tu[i][l] == tv[j][l] && tu[i][l] > 0 && tv[j][l] > 0)
-          tmp += min(tu[i][l],tv[j][l]);
+        tmp = 0;
+        for(l = 0; l < pow(r,k); l++)
+        {
+          if(tu[i][l] == tv[j][l] && tu[i][l] > 0 && tv[j][l] > 0)
+            tmp += min(tu[i][l],tv[j][l]);
+        }
+        GtUword length_u = gt_encseq_seqlength(encseq_first, i);
+        GtUword length_v = gt_encseq_seqlength(encseq_second, j);
+        dist = (float)tmp/(float)(min(length_u, length_v)-k+1);
+        score[score->pos].dist = dist;
+        score[score->pos].seqnum_u = i;
+        score[score->pos].seqnum_v = j;
+        score->pos++;
       }
-      GtUword length_u = gt_encseq_seqlength(encseq_first, i);
-      GtUword length_v = gt_encseq_seqlength(encseq_second, j);
-      dist = (float)tmp/(float)(min(length_u, length_v)-k+1);
-      score[score->pos].dist = dist;
-      score[score->pos].seqnum_u = i;
-      score[score->pos].seqnum_v = j;
-      score->pos++;
+    }
+  }
+  else
+  {
+    score = malloc(sizeof(FScore)*((numofseqfirst*numofseqfirst)+1));
+    score->pos = 0;
+  
+    for(i = 0; i < numofseqfirst; i++)
+    {
+      for(j = (i+1); j < numofseqfirst; j++)
+      {
+        tmp = 0;
+        for(l = 0; l < pow(r,k); l++)
+        {
+          if(tu[i][l] == tu[j][l] && tu[i][l] > 0 && tu[j][l] > 0)
+            tmp += min(tu[i][l],tu[j][l]);
+        }
+        GtUword length_u = gt_encseq_seqlength(encseq_first, i);
+        GtUword length_v = gt_encseq_seqlength(encseq_first, j);
+        dist = (float)tmp/(float)(min(length_u, length_v)-k+1);
+        score[score->pos].dist = dist;
+        score[score->pos].seqnum_u = i;
+        score[score->pos].seqnum_v = j;
+        score->pos++;
+      }
     }
   }
   return score;
