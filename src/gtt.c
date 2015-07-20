@@ -83,6 +83,7 @@
 #include "extended/string_matching.h"
 #include "extended/tag_value_map.h"
 #include "extended/uint64hashtable.h"
+#include "extended/gt_sequencescorer.h"
 #include "ltr/gt_ltrclustering.h"
 #include "ltr/gt_ltrdigest.h"
 #include "ltr/gt_ltrharvest.h"
@@ -174,6 +175,7 @@
 #include "annotationsketch/rec_map.h"
 #include "annotationsketch/style.h"
 #include "annotationsketch/track.h"
+
 #endif
 
 GtToolbox* gtt_tools(void)
@@ -259,6 +261,7 @@ GtToolbox* gtt_tools(void)
   gt_toolbox_add_tool(tools, "uniq", gt_uniq());
   gt_toolbox_add_tool(tools, "uniquesub", gt_uniquesub());
   gt_toolbox_add_tool(tools, "wtree", gt_wtree());
+  gt_toolbox_add_tool(tools, "scorer", gt_sequencescorer());
 #ifndef WITHOUT_CAIRO
   gt_toolbox_add_tool(tools, "sketch", gt_sketch());
   gt_toolbox_add_tool(tools, "sketch_page", gt_sketch_page());
