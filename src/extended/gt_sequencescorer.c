@@ -24,15 +24,18 @@
 #include "core/str_array_api.h"
 #include "tools/gt_encseq_encode.h"
 #include "core/warning_api.h"
+#include "assert.h"
 
 #include "gt_sequencescorer.h"
-#include "fscore.h"
+#include "score.h"
 
 
 typedef struct 
 {
   unsigned int k;
+  unsigned int q;
   bool fscore;
+  bool qgram;
   GtStrArray *queryfiles;
 } GtSequencescorerArguments;
 
@@ -61,32 +64,36 @@ static GtOptionParser* gt_sequencescorer_option_parser_new(void *tool_arguments)
   GtSequencescorerArguments *arguments = tool_arguments;
   
   GtOptionParser *op;
-  GtOption *k, *fscore, *queryoption;
+  GtOption *k, *q, *fscore, *queryoption, *qgram;
   gt_assert(arguments);
 
   /* init */
   op = gt_option_parser_new("[option] -s sequencefile [sequencefile] [...]",
                             "Computes scores.");
-  gt_option_parser_set_mail_address(op,"<hannah@rauterberg.eu>");
+                            
+  gt_option_parser_set_mail_address(op,"<2rauterb@informatik.uni-hamburg.de>");
 
-  k = gt_option_new_uint_min("k","length of kmer",
-                                  &arguments->k,
-                                  6,
-                                  1);
+  k = gt_option_new_uint_min("k","length of kmer", &arguments->k, 6, 1);
   gt_option_parser_add_option(op, k);
+  
+  q = gt_option_new_uint_min("q","length of qgram", &arguments->q, 6, 1);
+  gt_option_parser_add_option(op, q);
                                   
-  fscore = gt_option_new_bool("fscore", "computes fscore",
+  fscore = gt_option_new_bool("fscore", "computes fscore", 
                               &arguments->fscore, false);
   gt_option_parser_add_option(op, fscore);
   
-  
-  queryoption = gt_option_new_filename_array("s",
-                                             "Specify query files",
+  qgram = gt_option_new_bool("qgram", "computes qgram distance", 
+                              &arguments->qgram, false);
+  gt_option_parser_add_option(op, qgram);
+   
+  queryoption = gt_option_new_filename_array("s", "Specify query files",
                                              arguments->queryfiles);
   gt_option_parser_add_option(op, queryoption);
   gt_option_is_mandatory(queryoption);
  
   gt_option_imply(k, fscore);
+  gt_option_imply(q, qgram);
   return op;
 }
 
@@ -127,8 +134,11 @@ static GtEncseq *gt_encseq_get_encseq(const char *seqfile,
       return NULL;
 }
 
-static int gt_sequencescorer_runner(GT_UNUSED int argc, GT_UNUSED const char **argv, GT_UNUSED int parsed_args,
-                              void *tool_arguments, GT_UNUSED GtError *err)
+static int gt_sequencescorer_runner(GT_UNUSED int argc, 
+                                    GT_UNUSED const char **argv, 
+                                    GT_UNUSED int parsed_args,
+                                    void *tool_arguments, 
+                                    GT_UNUSED GtError *err)
 {
   GtSequencescorerArguments *arguments = tool_arguments;
   int haserr = 0;
@@ -149,20 +159,23 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc, GT_UNUSED const char **a
   else if(gt_str_array_size(arguments->queryfiles) == 1)
   {
     encseq_first = gt_encseq_get_encseq(gt_str_array_get(arguments->queryfiles,0), err);
+    alpha = gt_encseq_alphabet(encseq_first);
     gt_error_check(err);
   }
-  else if(gt_str_array_size(arguments->queryfiles) == 2)
+  else
   {
     encseq_first = gt_encseq_get_encseq(gt_str_array_get(arguments->queryfiles,0), err);
     gt_error_check(err);
+    alpha = gt_encseq_alphabet(encseq_first);
     encseq_second = gt_encseq_get_encseq(gt_str_array_get(arguments->queryfiles,1), err);
     gt_error_check(err);
+    GtAlphabet* tmp = gt_encseq_alphabet(encseq_second);
+    assert(gt_alphabet_equals(alpha, tmp));
   }
-  alpha = gt_encseq_alphabet(encseq_first);
     
   if(arguments->fscore == true)
   {
-    FScore *score;
+    Score *score;
     GtUword r,
             i;
             
@@ -170,15 +183,39 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc, GT_UNUSED const char **a
     {
       r = gt_alphabet_size(alpha);
       
-      score = fscore(encseq_first, 
-                     encseq_second, 
-                     r, 
-                     arguments->k, 
-                     err);
+      score = calc_fscore(encseq_first, 
+                          encseq_second, 
+                          r, 
+                          arguments->k, 
+                          err);
       
       for( i = 0; i < score->pos; i++)
       {
         printf("Fscore between sequence "GT_WU" and "GT_WU" is %.3f.\n", 
+            score[i].seqnum_u, score[i].seqnum_v, score[i].dist);
+      }
+      free(score);
+    }
+  }
+  if(arguments->qgram == true)
+  {
+    Score *score;
+    GtUword r,
+            i;
+            
+    if(!haserr)
+    {
+      r = gt_alphabet_size(alpha);
+      
+      score = calc_qgram(encseq_first, 
+                         encseq_second, 
+                         r, 
+                         arguments->q, 
+                         err);
+      
+      for( i = 0; i < score->pos; i++)
+      {
+        printf("Qgramdistance between sequence "GT_WU" and "GT_WU" is %.0f.\n", 
             score[i].seqnum_u, score[i].seqnum_v, score[i].dist);
       }
       free(score);
