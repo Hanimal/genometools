@@ -66,18 +66,32 @@ void gt_get_kmercodes(const GtEncseq *encseq,
                       GtUword kmerlen,
                       GtUword **tau)
 {
+  GtUword i;
   GtKmercodeiterator *kc_iter;
   const GtKmercode *kmercode;
   GtUword seqnum,
-          pos;
+          pos = 0;
   gt_assert(encseq != NULL);
+  for(i = 0; i < kmerlen; i++)
+  {
+    if(gt_encseq_total_length(encseq) <= pos)
+      return;
+    if(gt_encseq_position_is_separator(encseq, pos, GT_READMODE_FORWARD))
+    {
+      gt_warning("Sequence "GT_WU" is shorter than given k.\n", gt_encseq_seqnum(encseq, pos));
+      i = 0;
+      pos++;
+      continue;
+    }
+    pos++;
+  }
   kc_iter = gt_kmercodeiterator_encseq_new(encseq, 
                                            GT_READMODE_FORWARD, 
                                            kmerlen,
-                                           0);                                         
+                                           pos-kmerlen);                                         
   while ((kmercode = gt_kmercodeiterator_encseq_next(kc_iter)) != NULL) 
   {
-	  pos = gt_kmercodeiterator_encseq_get_currentpos(kc_iter);
+	  pos = (gt_kmercodeiterator_encseq_get_currentpos(kc_iter)-kmerlen); 
 	  if(gt_encseq_total_length(encseq) <= pos)
 	    break;
     if (!(kmercode->definedspecialposition))
@@ -88,7 +102,7 @@ void gt_get_kmercodes(const GtEncseq *encseq,
   }
   gt_kmercodeiterator_delete(kc_iter);
 }
-//Noch betrachtet, dass sequenz kleiner sein kann als q.
+//Noch betrachtet, dass sequenz kleiner sein kann als q. -> Done but not testet
 void gt_get_qgramcodes(const GtEncseq *encseq, 
                        GtUword r, 
                        GtUword q,
@@ -100,21 +114,43 @@ void gt_get_qgramcodes(const GtEncseq *encseq,
           *alphatab,
           seqnum,
           code = 0,
-          i, j,
+          i, j, pos = 0,
           tmp,
           delete;
-          
+  
+  /*for(i = 0; i < (gt_encseq_total_length(encseq)); i++)
+  {
+    if(gt_encseq_position_is_separator(encseq, i, GT_READMODE_FORWARD))
+    {
+      printf("\n");
+      continue;
+    }
+    printf("%c",gt_encseq_get_decoded_char(encseq, i, GT_READMODE_FORWARD));
+  }
+  printf("\n");*/
   alphatab = alphabetcode(gt_encseq_alphabet(encseq), err);
   gt_error_check(err);
   factor = def_factor(r, q);
-                                            
+ 
+ 
+                                        
   for(i = 0; i < q; i++)
   {
-    tmp = (GtUword) gt_encseq_get_decoded_char(encseq, i, 
+    if(gt_encseq_total_length(encseq) <= pos)
+      return;
+    if(gt_encseq_position_is_separator(encseq, pos, GT_READMODE_FORWARD))
+    {
+      gt_warning("Sequence "GT_WU" is shorter than given q.\n", gt_encseq_seqnum(encseq, pos));
+      i = 0;
+      pos++;
+      continue;
+    }
+    tmp = (GtUword) gt_encseq_get_decoded_char(encseq, pos, 
                                                GT_READMODE_FORWARD);
     code += (alphatab[tmp]*factor[q-1-i]);
+    pos++;
   }
-  seqnum = gt_encseq_seqnum(encseq, i);
+  seqnum = gt_encseq_seqnum(encseq, pos);
   tau[seqnum][code]+= 1;
   
   for(i = 1; i <= (gt_encseq_total_length(encseq)-q); i++)
@@ -134,8 +170,6 @@ void gt_get_qgramcodes(const GtEncseq *encseq,
       tau[seqnum][code]+= 1;
       i = (i - (q - 1));
     }
-    
-
     tmp = (GtUword) gt_encseq_get_decoded_char(encseq, i+q-1, 
                                                GT_READMODE_FORWARD);
     delete = (GtUword) gt_encseq_get_decoded_char(encseq, i-1, 
