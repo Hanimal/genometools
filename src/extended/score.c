@@ -17,171 +17,6 @@
 #include "score.h"
 #define SIZE 5
 
-GtUword *def_factor(GtUword r, GtUword q)
-{
-    GtUword i, 
-            *factor;
-    factor=calloc(sizeof(GtUword),(q+1));
-    factor[0]=1;
-    for(i = 1; i < q; i++)
-    {
-        factor[i]=factor[i-1]*r;
-    }
-    return(factor);
-}
-
-GtUword *alphabetcode(GtAlphabet *alpha, GtError *err)
-{
-  gt_error_check(err);
-  assert(alpha != NULL);
-  GtUword i;
-  GtUword *alpha_tab;
-  GtUword r;
-  const GtUchar* alphabet;
-  bool haserr = false;
-  
-  alpha_tab = malloc(sizeof(GtUword)*UCHAR_MAX);
-  r = gt_alphabet_size(alpha);
-  alphabet = gt_alphabet_characters(alpha);
-
-  for(i=0; i<UCHAR_MAX; i++)
-    alpha_tab[i] = -1;
-  for(i=0; i < (r-1); i++)
-  {
-    if(alpha_tab[(GtUword)alphabet[i]] == -1)
-      alpha_tab[(GtUword)alphabet[i]] = i;      
-    else
-    {
-      gt_error_set(err,"The same symbol %c occured more than" 
-        "once in the given alphabet\n", alphabet[i]);
-      haserr = true;
-    }
-  }
-  GtUchar wildcard = gt_alphabet_wildcard_show(alpha);
-  alpha_tab[wildcard] = i;
-  return((haserr)? NULL : alpha_tab);
-}
-
-void gt_get_kmercodes(const GtEncseq *encseq, 
-                      GtUword kmerlen,
-                      GtUword **tau)
-{
-  GtUword i;
-  GtKmercodeiterator *kc_iter;
-  const GtKmercode *kmercode;
-  GtUword seqnum,
-          pos = 0;
-  gt_assert(encseq != NULL);
-  for(i = 0; i < kmerlen; i++)
-  {
-    if(gt_encseq_total_length(encseq) <= pos)
-      return;
-    if(gt_encseq_position_is_separator(encseq, pos, GT_READMODE_FORWARD))
-    {
-      gt_warning("Sequence "GT_WU" is shorter than given k.\n", gt_encseq_seqnum(encseq, pos));
-      i = 0;
-      pos++;
-      continue;
-    }
-    pos++;
-  }
-  kc_iter = gt_kmercodeiterator_encseq_new(encseq, 
-                                           GT_READMODE_FORWARD, 
-                                           kmerlen,
-                                           pos-kmerlen);                                         
-  while ((kmercode = gt_kmercodeiterator_encseq_next(kc_iter)) != NULL) 
-  {
-	  pos = (gt_kmercodeiterator_encseq_get_currentpos(kc_iter)-kmerlen); 
-	  if(gt_encseq_total_length(encseq) <= pos)
-	    break;
-    if (!(kmercode->definedspecialposition))
-    {  
-      seqnum = gt_encseq_seqnum(encseq, pos);
-      tau[seqnum][kmercode->code]++;
-    }
-  }
-  gt_kmercodeiterator_delete(kc_iter);
-}
-//Noch betrachtet, dass sequenz kleiner sein kann als q. -> Done but not testet
-void gt_get_qgramcodes(const GtEncseq *encseq, 
-                       GtUword r, 
-                       GtUword q,
-                       GtUword **tau,
-                       GtError *err)
-{
-  gt_assert(encseq != NULL);
-  GtUword *factor,
-          *alphatab,
-          seqnum,
-          code = 0,
-          i, j, pos = 0,
-          tmp,
-          delete;
-  
-  /*for(i = 0; i < (gt_encseq_total_length(encseq)); i++)
-  {
-    if(gt_encseq_position_is_separator(encseq, i, GT_READMODE_FORWARD))
-    {
-      printf("\n");
-      continue;
-    }
-    printf("%c",gt_encseq_get_decoded_char(encseq, i, GT_READMODE_FORWARD));
-  }
-  printf("\n");*/
-  alphatab = alphabetcode(gt_encseq_alphabet(encseq), err);
-  gt_error_check(err);
-  factor = def_factor(r, q);
- 
- 
-                                        
-  for(i = 0; i < q; i++)
-  {
-    if(gt_encseq_total_length(encseq) <= pos)
-      return;
-    if(gt_encseq_position_is_separator(encseq, pos, GT_READMODE_FORWARD))
-    {
-      gt_warning("Sequence "GT_WU" is shorter than given q.\n", gt_encseq_seqnum(encseq, pos));
-      i = 0;
-      pos++;
-      continue;
-    }
-    tmp = (GtUword) gt_encseq_get_decoded_char(encseq, pos, 
-                                               GT_READMODE_FORWARD);
-    code += (alphatab[tmp]*factor[q-1-i]);
-    pos++;
-  }
-  seqnum = gt_encseq_seqnum(encseq, pos);
-  tau[seqnum][code]+= 1;
-  
-  for(i = 1; i <= (gt_encseq_total_length(encseq)-q); i++)
-  {
-    if(gt_encseq_position_is_separator(encseq, i+q-1, GT_READMODE_FORWARD))
-    {
-      code = 0;
-      i = (i + q);
-      for(j = 0; j < q; j++)
-      { 
-        tmp = (GtUword) gt_encseq_get_decoded_char(encseq, i, 
-                                                   GT_READMODE_FORWARD);
-        code += (alphatab[tmp]*factor[q-1-j]);
-        i++;
-      }
-      seqnum = gt_encseq_seqnum(encseq, i-1);
-      tau[seqnum][code]+= 1;
-      i = (i - (q - 1));
-    }
-    tmp = (GtUword) gt_encseq_get_decoded_char(encseq, i+q-1, 
-                                               GT_READMODE_FORWARD);
-    delete = (GtUword) gt_encseq_get_decoded_char(encseq, i-1, 
-                                                  GT_READMODE_FORWARD);
-    code = (code - alphatab[delete]*factor[q-1])*r + alphatab[tmp];
-    seqnum = gt_encseq_seqnum(encseq, i);
-    tau[seqnum][code]+= 1;
-  }
-  free(factor);
-  free(alphatab);
-}       
-
 GtUword** new_tau(GtUword numofsequences, GtUword r, GtUword length)
 {
   GtUword **tau,
@@ -212,34 +47,88 @@ GtUword min(GtUword a, GtUword b)
     return (b);
 }
 
+void gt_get_codes(const GtEncseq *encseq, 
+                  GtUword len,
+                  GtUword **tau)
+{
+  GtUword i;
+  /*printf("\n Sequenz: "GT_WU"\n", gt_encseq_seqnum(encseq, 0));
+  for(i = 0; i < (gt_encseq_total_length(encseq)); i++)
+  {
+    if(gt_encseq_position_is_separator(encseq, i, GT_READMODE_FORWARD))
+    {
+      printf("\n");
+      printf("Sequenz: "GT_WU"\n", gt_encseq_seqnum(encseq, i+1));
+      continue;
+    }
+    printf("%c",gt_encseq_get_decoded_char(encseq, i, GT_READMODE_FORWARD));
+  }
+  printf("\n");*/
+  GtKmercodeiterator *kc_iter;
+  const GtKmercode *kmercode;
+  GtUword seqnum,
+          pos = 0;
+  gt_assert(encseq != NULL);
+  for(i = 0; i < len; i++)
+  {
+    if(gt_encseq_total_length(encseq) <= pos)
+      return;
+    if(gt_encseq_position_is_separator(encseq, pos, GT_READMODE_FORWARD))
+    {
+      gt_warning("Sequence "GT_WU" is shorter than given k.\n", gt_encseq_seqnum(encseq, pos));
+      i = 0;
+      pos++;
+      continue;
+    }
+    pos++;
+  }
+  kc_iter = gt_kmercodeiterator_encseq_new(encseq, 
+                                           GT_READMODE_FORWARD, 
+                                           len,
+                                           pos-len);                                         
+  while ((kmercode = gt_kmercodeiterator_encseq_next(kc_iter)) != NULL) 
+  {
+	  pos = (gt_kmercodeiterator_encseq_get_currentpos(kc_iter)-len); 
+	  if(gt_encseq_total_length(encseq) <= pos)
+	    break;
+    if (!(kmercode->definedspecialposition))
+    {  
+      seqnum = gt_encseq_seqnum(encseq, pos);
+      tau[seqnum][kmercode->code]++;
+    }
+  }
+  gt_kmercodeiterator_delete(kc_iter);
+}
+
 Score *calc_qgram(GtEncseq *encseq_first, 
-                   GtEncseq *encseq_second,
-                   GtUword r, 
-                   GtUword q,
-                   GtError *err)
+                           GtEncseq *encseq_second, 
+                           GtUword r, 
+                           GtUword q, 
+                           GtError *err)
 {
   gt_error_check(err);
   assert(encseq_first != NULL);
   assert(r > 0 && q > 0);
+    
   GtUword numofseqfirst,
           numofseqsecond;
   GtUword **tu,
           **tv,
-          i, j, l,
-          dist = 0;
+          i, j, l;
+  float dist = 0;
   Score *score;
   
   numofseqfirst = gt_encseq_num_of_sequences(encseq_first);
   tu = new_tau(numofseqfirst, r, q);
-  gt_get_qgramcodes(encseq_first, r, q, tu, err);
+  gt_get_codes(encseq_first, q, tu);
   
   if(encseq_first && encseq_second)
-  {
+  {  
     numofseqsecond = gt_encseq_num_of_sequences(encseq_second);
     tv = new_tau(numofseqsecond, r, q);
-    gt_get_qgramcodes(encseq_second, r, q, tv, err);
-
-    score = malloc(sizeof(Score)*((numofseqfirst*numofseqsecond)));
+    gt_get_codes(encseq_second, q, tv);
+    
+    score = malloc(sizeof(Score)*((numofseqfirst*numofseqsecond)+1));
     score->pos = 0;
     
     for(i = 0; i < numofseqfirst; i++)
@@ -262,7 +151,7 @@ Score *calc_qgram(GtEncseq *encseq_first,
   }
   else
   {
-    score = malloc(sizeof(Score)*((numofseqfirst*numofseqfirst)));
+    score = malloc(sizeof(Score)*((numofseqfirst*numofseqfirst)+1));
     score->pos = 0;
   
     for(i = 0; i < numofseqfirst; i++)
@@ -283,8 +172,9 @@ Score *calc_qgram(GtEncseq *encseq_first,
     }
   }
   delete_tau(tu);
-  return score;  
+  return score;
 }
+
 
 Score *calc_fscore(GtEncseq *encseq_first, 
                    GtEncseq *encseq_second, 
@@ -304,16 +194,16 @@ Score *calc_fscore(GtEncseq *encseq_first,
           tmp;
   float dist = 0;
   Score *score;
-  
+
   numofseqfirst = gt_encseq_num_of_sequences(encseq_first);
   tu = new_tau(numofseqfirst, r, k);
-  gt_get_kmercodes(encseq_first, k, tu);
+  gt_get_codes(encseq_first, k, tu);
   
   if(encseq_first && encseq_second)
   {  
     numofseqsecond = gt_encseq_num_of_sequences(encseq_second);
     tv = new_tau(numofseqsecond, r, k);
-    gt_get_kmercodes(encseq_second, k, tv);
+    gt_get_codes(encseq_second, k, tv);
     
     score = malloc(sizeof(Score)*((numofseqfirst*numofseqsecond)+1));
     score->pos = 0;
