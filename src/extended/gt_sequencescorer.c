@@ -148,7 +148,6 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
 
   GtEncseq *encseq_first = NULL;
   GtEncseq *encseq_second = NULL;
-  GtAlphabet* alpha = NULL;
   
   if((gt_str_array_size(arguments->queryfiles) == 0)|| 
       (gt_str_array_size(arguments->queryfiles) > 2))
@@ -159,67 +158,59 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
   else if(gt_str_array_size(arguments->queryfiles) == 1)
   {
     encseq_first = gt_encseq_get_encseq(gt_str_array_get(arguments->queryfiles,0), err);
-    alpha = gt_encseq_alphabet(encseq_first);
     gt_error_check(err);
   }
   else
   {
     encseq_first = gt_encseq_get_encseq(gt_str_array_get(arguments->queryfiles,0), err);
     gt_error_check(err);
-    alpha = gt_encseq_alphabet(encseq_first);
     encseq_second = gt_encseq_get_encseq(gt_str_array_get(arguments->queryfiles,1), err);
     gt_error_check(err);
-    GtAlphabet* tmp = gt_encseq_alphabet(encseq_second);
-    assert(gt_alphabet_equals(alpha, tmp));
+    assert(encseq_first && encseq_second);
+    assert(gt_alphabet_equals(gt_encseq_alphabet(encseq_first), 
+                              gt_encseq_alphabet(encseq_second)));
   }
-    
-  if(arguments->fscore == true)
+  if(arguments->fscore == true && !haserr)
   {
     Score *score;
     GtUword r,
             i;
             
-    if(!haserr)
+    r = gt_alphabet_size(gt_encseq_alphabet(encseq_first));
+      
+    score = calc_fscore(encseq_first, 
+                        encseq_second, 
+                        r, 
+                        arguments->k, 
+                        err);
+      
+    for( i = 0; i < score->pos; i++)
     {
-      r = gt_alphabet_size(alpha);
-      
-      score = calc_fscore(encseq_first, 
-                          encseq_second, 
-                          r, 
-                          arguments->k, 
-                          err);
-      
-      for( i = 0; i < score->pos; i++)
-      {
-        printf("Fscore between sequence "GT_WU" and "GT_WU" is %.3f.\n", 
-            score[i].seqnum_u, score[i].seqnum_v, score[i].dist);
-      }
-      free(score);
+      printf("Fscore between sequence "GT_WU" and "GT_WU" is %.3f.\n", 
+          score[i].seqnum_u, score[i].seqnum_v, score[i].dist);
     }
+    free(score);
   }
-  if(arguments->qgram == true)
+  if(arguments->qgram == true && !haserr)
   {
     Score *score;
     GtUword r,
             i;
             
-    if(!haserr)
+    r = gt_alphabet_size(gt_encseq_alphabet(encseq_first));
+     
+    score = calc_qgram(encseq_first, 
+                       encseq_second, 
+                       r, 
+                       arguments->q, 
+                       err);
+      
+    for( i = 0; i < score->pos; i++)
     {
-      r = gt_alphabet_size(alpha);
-      
-      score = calc_qgram(encseq_first, 
-                         encseq_second, 
-                         r, 
-                         arguments->q, 
-                         err);
-      
-      for( i = 0; i < score->pos; i++)
-      {
-        printf("Qgramdistance between sequence "GT_WU" and "GT_WU" is %.0f.\n", 
-            score[i].seqnum_u, score[i].seqnum_v, score[i].dist);
-      }
-      free(score);
+      printf("Qgramdistance between sequence "GT_WU" and "GT_WU" is %.0f.\n", 
+          score[i].seqnum_u, score[i].seqnum_v, score[i].dist);
     }
+    free(score);
   }
   gt_encseq_delete(encseq_first);
   gt_encseq_delete(encseq_second);
