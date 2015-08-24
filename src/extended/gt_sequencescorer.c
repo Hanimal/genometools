@@ -158,15 +158,29 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
   else if(gt_str_array_size(arguments->queryfiles) == 1)
   {
     encseq_first = gt_encseq_get_encseq(gt_str_array_get(arguments->queryfiles,0), err);
+    if(!encseq_first)
+    {
+      gt_error_set(err,"Sequencefile does not exist.\n");
+      haserr = true;
+    }
     gt_error_check(err);
   }
   else
   {
     encseq_first = gt_encseq_get_encseq(gt_str_array_get(arguments->queryfiles,0), err);
+    if(!encseq_first)
+    {
+      gt_error_set(err,"Sequencefile %s does not exist.\n", gt_str_array_get(arguments->queryfiles,0));
+      haserr = true;
+    }
     gt_error_check(err);
     encseq_second = gt_encseq_get_encseq(gt_str_array_get(arguments->queryfiles,1), err);
+    if(!encseq_second)
+    {
+      gt_error_set(err,"Sequencefile %s does not exist.\n", gt_str_array_get(arguments->queryfiles,1));
+      haserr = true;
+    }
     gt_error_check(err);
-    assert(encseq_first && encseq_second);
     assert(gt_alphabet_equals(gt_encseq_alphabet(encseq_first), 
                               gt_encseq_alphabet(encseq_second)));
   }
