@@ -1,5 +1,5 @@
 /*
-  Copyright (c) 2015 Hannah <hannah@rauterberg.eu>
+  Copyright (c) 2015 Hannah <2rauterb@informatik.uni-hamburg.de>
   Copyright (c) 2015 Center for Bioinformatics, University of Hamburg
 
   Permission to use, copy, modify, and distribute this software for any
@@ -34,8 +34,10 @@ typedef struct
 {
   unsigned int k;
   unsigned int q;
+  bool edist;
   bool fscore;
   bool qgram;
+  GtStr *scorematrix;
   GtStrArray *queryfiles;
 } GtSequencescorerArguments;
 
@@ -45,6 +47,7 @@ static void* gt_sequencescorer_arguments_new(void)
   
   arguments = gt_calloc(1, sizeof(*arguments));
   arguments->queryfiles = gt_str_array_new();
+  arguments->scorematrix = gt_str_new();
   return arguments;
 }
 
@@ -55,6 +58,7 @@ static void gt_sequencescorer_arguments_delete(void *tool_arguments)
   if (arguments != NULL) 
   {
     gt_str_array_delete(arguments->queryfiles);
+    gt_str_delete(arguments->scorematrix);
     gt_free(arguments);
   }
 }
@@ -64,7 +68,7 @@ static GtOptionParser* gt_sequencescorer_option_parser_new(void *tool_arguments)
   GtSequencescorerArguments *arguments = tool_arguments;
   
   GtOptionParser *op;
-  GtOption *k, *q, *fscore, *queryoption, *qgram;
+  GtOption *k, *q, *fscore, *queryoption, *qgram, *edist, *scorematrix;
   gt_assert(arguments);
 
   /* init */
@@ -83,6 +87,10 @@ static GtOptionParser* gt_sequencescorer_option_parser_new(void *tool_arguments)
                               &arguments->fscore, false);
   gt_option_parser_add_option(op, fscore);
   
+  edist = gt_option_new_bool("edist", "computes editdistance", 
+                              &arguments->edist, false);
+  gt_option_parser_add_option(op, edist);
+  
   qgram = gt_option_new_bool("qgram", "computes qgram distance", 
                               &arguments->qgram, false);
   gt_option_parser_add_option(op, qgram);
@@ -92,7 +100,14 @@ static GtOptionParser* gt_sequencescorer_option_parser_new(void *tool_arguments)
   gt_option_parser_add_option(op, queryoption);
   gt_option_is_mandatory(queryoption);
  
+  
+  scorematrix = gt_option_new_filename("smatrix", "Specify Scorematrix",
+                                       arguments->scorematrix);
+  gt_option_parser_add_option(op, scorematrix);
+                                       
+                                       
   gt_option_imply(k, fscore);
+  gt_option_imply(scorematrix, edist);
   gt_option_imply(q, qgram);
   return op;
 }
@@ -217,6 +232,22 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
                        encseq_second, 
                        r, 
                        arguments->q, 
+                       err);
+      
+    for( i = 0; i < score->pos; i++)
+    {
+      printf("Qgramdistance between sequence "GT_WU" and "GT_WU" is %.0f.\n", 
+          score[i].seqnum_u, score[i].seqnum_v, score[i].dist);
+    }
+    free(score);
+  }
+  if(arguments->edist == true && !haserr)
+  {
+    GtUword i;
+    Score *score;
+    score = calc_edist(encseq_first, 
+                       encseq_second, 
+                       arguments->scorematrix, 
                        err);
       
     for( i = 0; i < score->pos; i++)
