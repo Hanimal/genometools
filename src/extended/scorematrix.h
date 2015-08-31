@@ -10,7 +10,6 @@
 #define CHECK_READ(READ,N) if(READ != N){fprintf(stderr,"Fehler beim "\
                                          "Lesen der Datei\n");return(NULL);}
                                          
-                                         
 typedef struct{
     int **matrix;
     unsigned int dim;
@@ -19,14 +18,10 @@ typedef struct{
 
 Scorematrix *read_score(FILE *fp);
 
-void allocate_matrix(Scorematrix *smatrix);
-
-Scorematrix *read_score(FILE *fp);
-
 long access_scorematrix(Scorematrix *smatrix, char aminoacid1, char aminoacid2);
 
-int show_scorematrix(Scorematrix *smatrix);
-
 void delete_scorematrix(Scorematrix *smatrix);
+
+int show_scorematrix(Scorematrix *smatrix);
 
 #endif
