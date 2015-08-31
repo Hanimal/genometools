@@ -252,7 +252,7 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
       
     for( i = 0; i < score->pos; i++)
     {
-      printf("Qgramdistance between sequence "GT_WU" and "GT_WU" is %.0f.\n", 
+      printf("Editdistance between sequence "GT_WU" and "GT_WU" is %.0f.\n", 
           score[i].seqnum_u, score[i].seqnum_v, score[i].dist);
     }
     free(score);
