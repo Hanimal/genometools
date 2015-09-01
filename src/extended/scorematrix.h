@@ -4,12 +4,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
+#include <core/assert_api.h>
 #include <stdbool.h>
 #include <limits.h>
-#define CHECK_READ(READ,N) if(READ != N){fprintf(stderr,"Fehler beim "\
-                                         "Lesen der Datei\n");return(NULL);}
-                                         
+#define CHECK_READ(READ,N) if (READ != N) {fprintf (stderr,"Fehler beim "\
+                                          "Lesen der Datei\n");return(NULL);}
+
 typedef struct{
     int **matrix;
     unsigned int dim;

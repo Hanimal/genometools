@@ -8,19 +8,19 @@ typedef struct{
   float dist;
 }Score;
 
-Score* calc_fscore(GtEncseq *encseq_first, 
-                   GtEncseq *encseq_second, 
-                   GtUword r, 
-                   GtUword k, 
+Score* calc_fscore(GtEncseq *encseq_first,
+                   GtEncseq *encseq_second,
+                   GtUword r,
+                   GtUword k,
                    GtError *err);
-                
-Score* calc_qgram(GtEncseq *encseq_first, 
+
+Score* calc_qgram(GtEncseq *encseq_first,
                   GtEncseq *encseq_second,
-                  GtUword r, 
+                  GtUword r,
                   GtUword q,
                   GtError *err);
 
-Score* calc_edist(GtEncseq *encseq_first, 
+Score* calc_edist(GtEncseq *encseq_first,
                   GtEncseq *encseq_second,
                   GtStr *scorematrix,
                   GtError *err);
