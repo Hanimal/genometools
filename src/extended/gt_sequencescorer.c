@@ -24,13 +24,12 @@
 #include "core/str_array_api.h"
 #include "tools/gt_encseq_encode.h"
 #include "core/warning_api.h"
-#include "assert.h"
+#include "core/assert_api.h"
 
 #include "gt_sequencescorer.h"
 #include "score.h"
 
-
-typedef struct 
+typedef struct
 {
   unsigned int k;
   unsigned int q;
@@ -44,8 +43,9 @@ typedef struct
 static void* gt_sequencescorer_arguments_new(void)
 {
   GtSequencescorerArguments *arguments;
-  
-  arguments = gt_calloc(1, sizeof(*arguments));
+
+  arguments = gt_calloc(1, sizeof (*arguments));
+
   arguments->queryfiles = gt_str_array_new();
   arguments->scorematrix = gt_str_new();
   return arguments;
@@ -54,8 +54,8 @@ static void* gt_sequencescorer_arguments_new(void)
 static void gt_sequencescorer_arguments_delete(void *tool_arguments)
 {
   GtSequencescorerArguments *arguments = tool_arguments;
-  
-  if (arguments != NULL) 
+
+  if (arguments != NULL)
   {
     gt_str_array_delete(arguments->queryfiles);
     gt_str_delete(arguments->scorematrix);
@@ -66,7 +66,7 @@ static void gt_sequencescorer_arguments_delete(void *tool_arguments)
 static GtOptionParser* gt_sequencescorer_option_parser_new(void *tool_arguments)
 {
   GtSequencescorerArguments *arguments = tool_arguments;
-  
+
   GtOptionParser *op;
   GtOption *k, *q, *fscore, *queryoption, *qgram, *edist, *scorematrix;
   gt_assert(arguments);
@@ -74,40 +74,38 @@ static GtOptionParser* gt_sequencescorer_option_parser_new(void *tool_arguments)
   /* init */
   op = gt_option_parser_new("[option] -s sequencefile [sequencefile] [...]",
                             "Computes scores.");
-                            
+
   gt_option_parser_set_mail_address(op,"<2rauterb@informatik.uni-hamburg.de>");
 
   k = gt_option_new_uint_min("k","length of kmer", &arguments->k, 6, 1);
   gt_option_parser_add_option(op, k);
-  
+
   q = gt_option_new_uint_min("q","length of qgram", &arguments->q, 6, 1);
   gt_option_parser_add_option(op, q);
-                                  
-  fscore = gt_option_new_bool("fscore", "computes fscore", 
+
+  fscore = gt_option_new_bool("fscore", "computes fscore",
                               &arguments->fscore, false);
   gt_option_parser_add_option(op, fscore);
-  
-  edist = gt_option_new_bool("edist", "computes editdistance", 
+
+  edist = gt_option_new_bool("edist", "computes editdistance",
                               &arguments->edist, false);
   gt_option_parser_add_option(op, edist);
-  
-  qgram = gt_option_new_bool("qgram", "computes qgram distance", 
+
+  qgram = gt_option_new_bool("qgram", "computes qgram distance",
                               &arguments->qgram, false);
   gt_option_parser_add_option(op, qgram);
-   
+
   queryoption = gt_option_new_filename_array("s", "Specify query files",
                                              arguments->queryfiles);
   gt_option_parser_add_option(op, queryoption);
   gt_option_is_mandatory(queryoption);
- 
-  
+
   scorematrix = gt_option_new_filename("smatrix", "Specify Scorematrix",
                                        arguments->scorematrix);
   gt_option_parser_add_option(op, scorematrix);
-                                       
-                                       
+
   gt_option_imply(k, fscore);
-  gt_option_imply(scorematrix, edist);
+  gt_option_imply(edist, scorematrix);
   gt_option_imply(q, qgram);
   return op;
 }
@@ -132,27 +130,27 @@ static GtEncseq *gt_encseq_get_encseq(const char *seqfile,
     int had_err = 0;
     gt_error_check(err);
     gt_assert(seqfile);
-  
+
     encseq_loader = gt_encseq_loader_new();
     if (!(encseq = gt_encseq_loader_load(encseq_loader, seqfile, err)))
       had_err = -1;
 
     gt_encseq_loader_delete(encseq_loader);
-  
-    if(!had_err) 
+
+    if (!had_err)
     {
       if (!gt_encseq_has_description_support(encseq))
         gt_warning("Missing description support for file %s", seqfile);
         return encseq;
-    } 
+    }
     else
       return NULL;
 }
 
-static int gt_sequencescorer_runner(GT_UNUSED int argc, 
-                                    GT_UNUSED const char **argv, 
+static int gt_sequencescorer_runner(GT_UNUSED int argc,
+                                    GT_UNUSED const char **argv,
                                     GT_UNUSED int parsed_args,
-                                    void *tool_arguments, 
+                                    void *tool_arguments,
                                     GT_UNUSED GtError *err)
 {
   GtSequencescorerArguments *arguments = tool_arguments;
@@ -163,17 +161,18 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
 
   GtEncseq *encseq_first = NULL;
   GtEncseq *encseq_second = NULL;
-  
-  if((gt_str_array_size(arguments->queryfiles) == 0)|| 
+
+  if ((gt_str_array_size(arguments->queryfiles) == 0)||
       (gt_str_array_size(arguments->queryfiles) > 2))
   {
     gt_error_set(err,"At least one and at most two sequencefiles allowed.\n");
     haserr = true;
   }
-  else if(gt_str_array_size(arguments->queryfiles) == 1)
+  else if (gt_str_array_size(arguments->queryfiles) == 1)
   {
-    encseq_first = gt_encseq_get_encseq(gt_str_array_get(arguments->queryfiles,0), err);
-    if(!encseq_first)
+    encseq_first = gt_encseq_get_encseq(gt_str_array_get(arguments->queryfiles,
+                                                         0), err);
+    if (!encseq_first)
     {
       gt_error_set(err,"Sequencefile does not exist.\n");
       haserr = true;
@@ -182,77 +181,81 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
   }
   else
   {
-    encseq_first = gt_encseq_get_encseq(gt_str_array_get(arguments->queryfiles,0), err);
-    if(!encseq_first)
+    encseq_first = gt_encseq_get_encseq(gt_str_array_get(arguments->queryfiles,
+                                                         0), err);
+    if (!encseq_first)
     {
-      gt_error_set(err,"Sequencefile %s does not exist.\n", gt_str_array_get(arguments->queryfiles,0));
+      gt_error_set(err,"Sequencefile %s does not exist.\n",
+                        gt_str_array_get(arguments->queryfiles,0));
       haserr = true;
     }
     gt_error_check(err);
-    encseq_second = gt_encseq_get_encseq(gt_str_array_get(arguments->queryfiles,1), err);
-    if(!encseq_second)
+    encseq_second = gt_encseq_get_encseq(gt_str_array_get(arguments->queryfiles,
+                                                          1), err);
+    if (!encseq_second)
     {
-      gt_error_set(err,"Sequencefile %s does not exist.\n", gt_str_array_get(arguments->queryfiles,1));
+      gt_error_set(err,"Sequencefile %s does not exist.\n",
+                        gt_str_array_get(arguments->queryfiles,1));
       haserr = true;
     }
     gt_error_check(err);
-    assert(gt_alphabet_equals(gt_encseq_alphabet(encseq_first), 
-                              gt_encseq_alphabet(encseq_second)));
+    gt_assert(gt_alphabet_equals(gt_encseq_alphabet(encseq_first),
+                                 gt_encseq_alphabet(encseq_second)));
   }
-  if(arguments->fscore == true && !haserr)
+  if (arguments->fscore == true && !haserr)
   {
     Score *score;
     GtUword r,
             i;
-            
+
     r = gt_alphabet_size(gt_encseq_alphabet(encseq_first));
-      
-    score = calc_fscore(encseq_first, 
-                        encseq_second, 
-                        r, 
-                        arguments->k, 
+
+    score = calc_fscore(encseq_first,
+                        encseq_second,
+                        r,
+                        arguments->k,
                         err);
-      
-    for( i = 0; i < score->pos; i++)
+
+    for (i = 0; i < score->pos; i++)
     {
-      printf("Fscore between sequence "GT_WU" and "GT_WU" is %.3f.\n", 
+      printf("Fscore between sequence "GT_WU" and "GT_WU" is %.3f.\n",
           score[i].seqnum_u, score[i].seqnum_v, score[i].dist);
     }
     free(score);
   }
-  if(arguments->qgram == true && !haserr)
+  if (arguments->qgram == true && !haserr)
   {
     Score *score;
     GtUword r,
             i;
-            
+
     r = gt_alphabet_size(gt_encseq_alphabet(encseq_first));
-     
-    score = calc_qgram(encseq_first, 
-                       encseq_second, 
-                       r, 
-                       arguments->q, 
+
+    score = calc_qgram(encseq_first,
+                       encseq_second,
+                       r,
+                       arguments->q,
                        err);
-      
-    for( i = 0; i < score->pos; i++)
+
+    for (i = 0; i < score->pos; i++)
     {
-      printf("Qgramdistance between sequence "GT_WU" and "GT_WU" is %.0f.\n", 
+      printf("Qgramdistance between sequence "GT_WU" and "GT_WU" is %.0f.\n",
           score[i].seqnum_u, score[i].seqnum_v, score[i].dist);
     }
     free(score);
   }
-  if(arguments->edist == true && !haserr)
+  if (arguments->edist == true && !haserr)
   {
     GtUword i;
     Score *score;
-    score = calc_edist(encseq_first, 
-                       encseq_second, 
-                       arguments->scorematrix, 
+    score = calc_edist(encseq_first,
+                       encseq_second,
+                       arguments->scorematrix,
                        err);
-      
-    for( i = 0; i < score->pos; i++)
+
+    for (i = 0; i < score->pos; i++)
     {
-      printf("Editdistance between sequence "GT_WU" and "GT_WU" is %.0f.\n", 
+      printf("Editdistance between sequence "GT_WU" and "GT_WU" is %.0f.\n",
           score[i].seqnum_u, score[i].seqnum_v, score[i].dist);
     }
     free(score);
