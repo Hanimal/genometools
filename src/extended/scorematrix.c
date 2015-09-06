@@ -27,12 +27,12 @@ Scorematrix *read_score(FILE *fp)
          *s;
 
     s = malloc(sizeof(char)*SIZE);
-    CHECK_READ(fread(&c, sizeof char,1, fp),1);
+    CHECK_READ(fread(&c, sizeof(char),1, fp),1);
     while (c == '#')
     {
         while (c != '\n')
-            CHECK_READ(fread(&c, sizeof char,1, fp),1);
-        CHECK_READ(fread(&c, sizeof char,1, fp),1);
+            CHECK_READ(fread(&c, sizeof(char),1, fp),1);
+        CHECK_READ(fread(&c, sizeof(char),1, fp),1);
     }
     while (c != '\n')
     {
@@ -46,7 +46,7 @@ Scorematrix *read_score(FILE *fp)
             s[i] = c;
             i++;
         }
-        CHECK_READ(fread(&c, sizeof char,1, fp),1);
+        CHECK_READ(fread(&c, sizeof(char),1, fp),1);
     }
     if (i == size)
     {

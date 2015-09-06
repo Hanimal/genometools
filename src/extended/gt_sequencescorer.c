@@ -1,5 +1,5 @@
 /*
-  Copyright (c) 2015 Hannah <2rauterb@informatik.uni-hamburg.de>
+  Copyright (c) 2015 Hannah <hannah@rauterberg.eu>
   Copyright (c) 2015 Center for Bioinformatics, University of Hamburg
 
   Permission to use, copy, modify, and distribute this software for any
@@ -33,6 +33,7 @@ typedef struct
 {
   unsigned int k;
   unsigned int q;
+  int indelscore;
   bool edist;
   bool fscore;
   bool qgram;
@@ -68,20 +69,26 @@ static GtOptionParser* gt_sequencescorer_option_parser_new(void *tool_arguments)
   GtSequencescorerArguments *arguments = tool_arguments;
 
   GtOptionParser *op;
-  GtOption *k, *q, *fscore, *queryoption, *qgram, *edist, *scorematrix;
+  GtOption *k, *q, *fscore, *queryoption, *qgram, *edist, *scorematrix,
+           *indelscore;
   gt_assert(arguments);
 
   /* init */
   op = gt_option_parser_new("[option] -s sequencefile [sequencefile] [...]",
                             "Computes scores.");
 
-  gt_option_parser_set_mail_address(op,"<2rauterb@informatik.uni-hamburg.de>");
+  gt_option_parser_set_mail_address(op,"<hannah@rauterberg.eu>");
 
   k = gt_option_new_uint_min("k","length of kmer", &arguments->k, 6, 1);
   gt_option_parser_add_option(op, k);
 
   q = gt_option_new_uint_min("q","length of qgram", &arguments->q, 6, 1);
   gt_option_parser_add_option(op, q);
+
+  indelscore = gt_option_new_int_min("indelscore",
+                                     "set score for inserstion or deletion",
+                                     &arguments->indelscore, 1, INT_MIN);
+  gt_option_parser_add_option(op, indelscore);
 
   fscore = gt_option_new_bool("fscore", "computes fscore",
                               &arguments->fscore, false);
@@ -106,6 +113,7 @@ static GtOptionParser* gt_sequencescorer_option_parser_new(void *tool_arguments)
 
   gt_option_imply(k, fscore);
   gt_option_imply(edist, scorematrix);
+  gt_option_imply(edist, indelscore);
   gt_option_imply(q, qgram);
   return op;
 }
@@ -251,6 +259,7 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
     score = calc_edist(encseq_first,
                        encseq_second,
                        arguments->scorematrix,
+                       arguments->indelscore,
                        err);
 
     for (i = 0; i < score->pos; i++)
