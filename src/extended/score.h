@@ -20,8 +20,9 @@ Score* calc_qgram(GtEncseq *encseq_first,
                   GtUword q,
                   GtError *err);
 
-Score* calc_edist(GtEncseq *encseq_first,
+Score *calc_edist(GtEncseq *encseq_first,
                   GtEncseq *encseq_second,
                   GtStr *scorematrix,
-                  GtError *err);
+                  int indelscore,
+                  GT_UNUSED GtError *err);
 #endif
