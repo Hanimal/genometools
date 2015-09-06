@@ -25,6 +25,9 @@
 #include "tools/gt_encseq_encode.h"
 #include "core/warning_api.h"
 #include "core/assert_api.h"
+#include "match/esa-splititv.h"
+#include "match/sfx-mappedstr.h"
+#include "match/esa-map.h"
 
 #include "gt_sequencescorer.h"
 #include "score.h"
@@ -33,12 +36,15 @@ typedef struct
 {
   unsigned int k;
   unsigned int q;
+  unsigned int suffixlength;
   int indelscore;
   bool edist;
   bool fscore;
   bool qgram;
+  bool maxmatches;
   GtStr *scorematrix;
   GtStrArray *queryfiles;
+  GtStrArray *seq;
 } GtSequencescorerArguments;
 
 static void* gt_sequencescorer_arguments_new(void)
@@ -48,6 +54,7 @@ static void* gt_sequencescorer_arguments_new(void)
   arguments = gt_calloc(1, sizeof (*arguments));
 
   arguments->queryfiles = gt_str_array_new();
+  arguments->seq = gt_str_array_new();
   arguments->scorematrix = gt_str_new();
   return arguments;
 }
@@ -59,6 +66,7 @@ static void gt_sequencescorer_arguments_delete(void *tool_arguments)
   if (arguments != NULL)
   {
     gt_str_array_delete(arguments->queryfiles);
+    gt_str_array_delete(arguments->seq);
     gt_str_delete(arguments->scorematrix);
     gt_free(arguments);
   }
@@ -70,7 +78,7 @@ static GtOptionParser* gt_sequencescorer_option_parser_new(void *tool_arguments)
 
   GtOptionParser *op;
   GtOption *k, *q, *fscore, *queryoption, *qgram, *edist, *scorematrix,
-           *indelscore;
+           *indelscore, *maxmatches, *suffixlength, *seq;
   gt_assert(arguments);
 
   /* init */
@@ -78,43 +86,59 @@ static GtOptionParser* gt_sequencescorer_option_parser_new(void *tool_arguments)
                             "Computes scores.");
 
   gt_option_parser_set_mail_address(op,"<hannah@rauterberg.eu>");
-
-  k = gt_option_new_uint_min("k","length of kmer", &arguments->k, 6, 1);
-  gt_option_parser_add_option(op, k);
-
-  q = gt_option_new_uint_min("q","length of qgram", &arguments->q, 6, 1);
-  gt_option_parser_add_option(op, q);
-
-  indelscore = gt_option_new_int_min("indelscore",
-                                     "set score for inserstion or deletion",
-                                     &arguments->indelscore, 1, INT_MIN);
-  gt_option_parser_add_option(op, indelscore);
-
-  fscore = gt_option_new_bool("fscore", "computes fscore",
-                              &arguments->fscore, false);
-  gt_option_parser_add_option(op, fscore);
-
-  edist = gt_option_new_bool("edist", "computes editdistance",
-                              &arguments->edist, false);
-  gt_option_parser_add_option(op, edist);
-
-  qgram = gt_option_new_bool("qgram", "computes qgram distance",
-                              &arguments->qgram, false);
-  gt_option_parser_add_option(op, qgram);
-
-  queryoption = gt_option_new_filename_array("s", "Specify query files",
+  
+  queryoption = gt_option_new_filename_array("ii", "Specify query files.\n"
+                                            "Either Encseq or Suffixarray",
                                              arguments->queryfiles);
   gt_option_parser_add_option(op, queryoption);
   gt_option_is_mandatory(queryoption);
+  
+  /*fscore*/
+  fscore = gt_option_new_bool("fscore", "computes fscore",
+                              &arguments->fscore, false);
+  gt_option_parser_add_option(op, fscore);
+  k = gt_option_new_uint_min("k","length of kmer", &arguments->k, 6, 1);
+  gt_option_parser_add_option(op, k);
 
+  /*edist*/
+  edist = gt_option_new_bool("edist", "computes editdistance",
+                              &arguments->edist, false);
+  gt_option_parser_add_option(op, edist);
+  indelscore = gt_option_new_int_min("indelscore",
+                                     "set score for inserstion or deletion",
+                                     &arguments->indelscore, -1, INT_MIN);
+  gt_option_parser_add_option(op, indelscore);
   scorematrix = gt_option_new_filename("smatrix", "Specify Scorematrix",
                                        arguments->scorematrix);
   gt_option_parser_add_option(op, scorematrix);
+  
+  /*qgram*/
+  qgram = gt_option_new_bool("qgram", "computes qgram distance",
+                              &arguments->qgram, false);
+  gt_option_parser_add_option(op, qgram);
+  q = gt_option_new_uint_min("q","length of qgram", &arguments->q, 6, 1);
+  gt_option_parser_add_option(op, q);
 
-  gt_option_imply(k, fscore);
+  /*maxmatches*/
+  maxmatches = gt_option_new_bool("maxmatches", "computes maximalmatches from\n"
+                                  " Sequencefiles with respect to given "
+                                  "Suffixtab",
+                                  &arguments->maxmatches, false);
+  gt_option_parser_add_option(op, maxmatches);
+  suffixlength = gt_option_new_uint_min("suffixlength",
+                                        "length of suffix", 
+                                        &arguments->suffixlength, 3, 1);
+  gt_option_parser_add_option(op, suffixlength);
+  seq = gt_option_new_filename_array("seq", "Specify Sequencefiles",
+                                    arguments->seq);
+  gt_option_parser_add_option(op, seq);
+
+  gt_option_imply(fscore, k);
   gt_option_imply(edist, scorematrix);
   gt_option_imply(edist, indelscore);
-  gt_option_imply(q, qgram);
+  gt_option_imply(qgram, q);
+  gt_option_imply(maxmatches, suffixlength);
+  gt_option_imply(maxmatches, seq);
   return op;
 }
 
@@ -126,7 +150,6 @@ static int gt_sequencescorer_arguments_check(GT_UNUSED int rest_argc,
   int had_err = 0;
   gt_error_check(err);
   gt_assert(arguments);
-
   return had_err;
 }
 
@@ -169,53 +192,55 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
 
   GtEncseq *encseq_first = NULL;
   GtEncseq *encseq_second = NULL;
-
-  if ((gt_str_array_size(arguments->queryfiles) == 0)||
-      (gt_str_array_size(arguments->queryfiles) > 2))
+  if(arguments->maxmatches == false)
   {
-    gt_error_set(err,"At least one and at most two sequencefiles allowed.\n");
-    haserr = true;
-  }
-  else if (gt_str_array_size(arguments->queryfiles) == 1)
-  {
-    encseq_first = gt_encseq_get_encseq(gt_str_array_get(arguments->queryfiles,
-                                                         0), err);
-    if (!encseq_first)
+    if ((gt_str_array_size(arguments->queryfiles) == 0)||
+        (gt_str_array_size(arguments->queryfiles) > 2))
     {
-      gt_error_set(err,"Sequencefile does not exist.\n");
+      gt_error_set(err,"At least one and at most two sequencefiles allowed.\n");
       haserr = true;
     }
-    gt_error_check(err);
-  }
-  else
-  {
-    encseq_first = gt_encseq_get_encseq(gt_str_array_get(arguments->queryfiles,
-                                                         0), err);
-    if (!encseq_first)
+    else if (gt_str_array_size(arguments->queryfiles) == 1)
     {
-      gt_error_set(err,"Sequencefile %s does not exist.\n",
-                        gt_str_array_get(arguments->queryfiles,0));
-      haserr = true;
+      encseq_first = gt_encseq_get_encseq(gt_str_array_get(arguments->queryfiles,
+                                                           0), err);
+      if (!encseq_first)
+      {
+        gt_error_set(err,"Sequencefile does not exist.\n");
+        haserr = true;
+      }
+      gt_error_check(err);
     }
-    gt_error_check(err);
-    encseq_second = gt_encseq_get_encseq(gt_str_array_get(arguments->queryfiles,
-                                                          1), err);
-    if (!encseq_second)
+    else
     {
-      gt_error_set(err,"Sequencefile %s does not exist.\n",
-                        gt_str_array_get(arguments->queryfiles,1));
-      haserr = true;
+      encseq_first = gt_encseq_get_encseq(gt_str_array_get(arguments->queryfiles,
+                                                           0), err);
+      if (!encseq_first)
+      {
+        gt_error_set(err,"Sequencefile %s does not exist.\n",
+                          gt_str_array_get(arguments->queryfiles,0));
+        haserr = true;
+      }
+      gt_error_check(err);
+      encseq_second = gt_encseq_get_encseq(gt_str_array_get(arguments->queryfiles,
+                                                            1), err);
+      if (!encseq_second)
+      {
+        gt_error_set(err,"Sequencefile %s does not exist.\n",
+                          gt_str_array_get(arguments->queryfiles,1));
+        haserr = true;
+      }
+      gt_error_check(err);
+      gt_assert(gt_alphabet_equals(gt_encseq_alphabet(encseq_first),
+                                   gt_encseq_alphabet(encseq_second)));
     }
-    gt_error_check(err);
-    gt_assert(gt_alphabet_equals(gt_encseq_alphabet(encseq_first),
-                                 gt_encseq_alphabet(encseq_second)));
   }
   if (arguments->fscore == true && !haserr)
   {
     Score *score;
     GtUword r,
             i;
-
+    gt_assert(encseq_first);
     r = gt_alphabet_size(gt_encseq_alphabet(encseq_first));
 
     score = calc_fscore(encseq_first,
@@ -236,7 +261,7 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
     Score *score;
     GtUword r,
             i;
-
+    gt_assert(encseq_first);
     r = gt_alphabet_size(gt_encseq_alphabet(encseq_first));
 
     score = calc_qgram(encseq_first,
@@ -256,6 +281,7 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
   {
     GtUword i;
     Score *score;
+    gt_assert(encseq_first);
     score = calc_edist(encseq_first,
                        encseq_second,
                        arguments->scorematrix,
@@ -269,8 +295,26 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
     }
     free(score);
   }
-  gt_encseq_delete(encseq_first);
-  gt_encseq_delete(encseq_second);
+  if (arguments->maxmatches == true && !haserr)
+  {
+    Suffixarray suffixarray;
+    GtLogger *logger;
+    logger = gt_logger_new(true, "# ", stderr); 
+    gt_mapsuffixarray(&suffixarray,
+                      SARR_SUFTAB | SARR_ESQTAB, 
+                      gt_str_array_get(arguments->queryfiles,0),
+                      logger,
+                      err);
+    gt_error_check(err);
+    calc_maxmatches(arguments->seq,
+                    &suffixarray,
+                    arguments->suffixlength,
+                    err);  
+  }
+  if(encseq_first)
+    gt_encseq_delete(encseq_first);
+  if(encseq_second)
+    gt_encseq_delete(encseq_second);
   return haserr;
 }
 
