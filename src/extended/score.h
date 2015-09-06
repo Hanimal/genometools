@@ -25,4 +25,9 @@ Score *calc_edist(GtEncseq *encseq_first,
                   GtStr *scorematrix,
                   int indelscore,
                   GT_UNUSED GtError *err);
+                  
+void calc_maxmatches(GtStrArray *seq,
+                     Suffixarray *suffixarray,
+                     unsigned int suffixlength,
+                     GtError *err);
 #endif

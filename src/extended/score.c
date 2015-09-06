@@ -5,8 +5,11 @@
 #include "core/warning_api.h"
 #include "core/alphabet_api.h"
 #include "core/unused_api.h"
-
+#include "core/types_api.h"
+#include "match/esa-splititv.h"
 #include "match/sfx-mappedstr.h"
+#include "match/esa-map.h"
+#include "core/seq_iterator_sequence_buffer_api.h"
 
 #include "stdbool.h"
 #include "core/assert_api.h"
@@ -42,6 +45,28 @@ void delete_tau(GtUword **tau)
   }
 }
 
+GtWord** new_table(GtUword seqlength_first, GtUword seqlength_second)
+{
+  GtUword i;
+  GtWord **table;
+
+  table = malloc((seqlength_first+1)*sizeof(GtWord*));
+  *table = malloc((seqlength_first+1)*(seqlength_second+1)*sizeof(GtWord));
+  for (i=1; i <= seqlength_first; i++)
+      table[i] = table[i-1]+(seqlength_second+1);
+
+  return table;
+}
+
+void delete_table(GtWord **table)
+{
+  if (table != NULL)
+  {
+    free(*table);
+    free(table);
+  }
+}
+
 GtUword min(GtUword a, GtUword b)
 {
   if (a <= b)
@@ -50,7 +75,7 @@ GtUword min(GtUword a, GtUword b)
     return (b);
 }
 
-long max(long a, long b)
+GtWord max(GtWord a, GtWord b)
 {
   if (a <= b)
     return (b);
@@ -98,28 +123,6 @@ void gt_get_codes(const GtEncseq *encseq,
     }
   }
   gt_kmercodeiterator_delete(kc_iter);
-}
-
-GtWord** new_table(GtUword seqlength_first, GtUword seqlength_second)
-{
-  GtUword i;
-  GtWord **table;
-
-  table = malloc((seqlength_first+1)*sizeof(GtWord*));
-  *table = malloc((seqlength_first+1)*(seqlength_second+1)*sizeof(GtWord));
-  for (i=1; i <= seqlength_first; i++)
-      table[i] = table[i-1]+(seqlength_second+1);
-
-  return table;
-}
-
-void delete_table(GtWord **table)
-{
-  if (table != NULL)
-  {
-    free(*table);
-    free(table);
-  }
 }
 
 Score *calc_qgram(GtEncseq *encseq_first,
@@ -403,3 +406,61 @@ Score *calc_edist(GtEncseq *encseq_first,
   delete_scorematrix(smatrix);
   return score;
 }
+
+void calc_maxmatches(GtStrArray *seq,
+                     Suffixarray *suffixarray,
+                     unsigned int suffixlength,
+                     GtError *err)
+{
+  GtSeqIterator *seqit;
+  bool haserr = false;
+  GtUword totallength,
+          maxpreflength,
+          queryunitnum;
+  int retval;
+  const GtUchar *query;
+  GtUword querylen;
+  char *desc = NULL;
+  seqit = gt_seq_iterator_sequence_buffer_new(seq, err);
+  if (seqit == NULL)
+    haserr = true;
+  else
+  {
+    gt_assert(suffixarray);
+    gt_seq_iterator_set_symbolmap(seqit,
+                                  gt_alphabet_symbolmap(gt_encseq_alphabet(
+                                                        suffixarray->encseq)));
+    
+    for (queryunitnum = 0; /* Nothing */; queryunitnum++)
+    {
+      retval = gt_seq_iterator_next(seqit,
+                                    &query,
+                                    &querylen,
+                                    &desc,
+                                    err);
+      if (retval < 0)
+      {
+        haserr = true;
+        break;
+      }
+      if (retval == 0)
+        break;
+      if(!haserr)
+      {
+        totallength = gt_encseq_total_length(suffixarray->encseq);
+        maxpreflength = gt_findmaximalprefixinESA(suffixarray->encseq,
+                                                  suffixarray->readmode,
+                                                  totallength,
+                                                  suffixarray->suftab,
+                                                  query,
+                                                  suffixlength);
+        printf("Score: "GT_WU" Querylen: "GT_WU"\n", maxpreflength, querylen);
+      }
+                                                
+    }
+    gt_seq_iterator_delete(seqit);
+    gt_freesuffixarray(suffixarray);
+  }
+  
+}
+

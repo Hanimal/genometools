@@ -3,7 +3,7 @@ Keywords "gt_sequencescorer scorer qgram TransProt7"
 Test do
   run "#{$bin}gt encseq encode -smap TransProt7 #{$testdata}SequencescorerOne.txt"
   run "#{$bin}gt encseq encode -smap TransProt7 #{$testdata}SequencescorerTwo.txt"
-  run "#{$bin}gt scorer -qgram -s SequencescorerOne.txt SequencescorerTwo.txt -q 4"
+  run "#{$bin}gt scorer -qgram -ii SequencescorerOne.txt SequencescorerTwo.txt -q 4"
   run "diff -B #{last_stdout} #{$testdata}sequencescorerCompare_TransProt7_q4.out"
 end
 
@@ -12,7 +12,7 @@ Keywords "gt_sequencescorer scorer qgram TransProt11"
 Test do
   run "#{$bin}gt encseq encode -smap TransProt11 #{$testdata}SequencescorerOne.txt"
   run "#{$bin}gt encseq encode -smap TransProt11 #{$testdata}SequencescorerTwo.txt"
-  run "#{$bin}gt scorer -qgram -s SequencescorerOne.txt SequencescorerTwo.txt -q 5"
+  run "#{$bin}gt scorer -qgram -ii SequencescorerOne.txt SequencescorerTwo.txt -q 5"
   run "diff -B #{last_stdout} #{$testdata}sequencescorerCompare_TransProt11_q5.out"
 end
 
@@ -21,7 +21,7 @@ Keywords "gt_sequencescorer scorer fscore TransProt7"
 Test do
   run "#{$bin}gt encseq encode -smap TransProt7 #{$testdata}SequencescorerOne.txt"
   run "#{$bin}gt encseq encode -smap TransProt7 #{$testdata}SequencescorerTwo.txt"
-  run "#{$bin}gt scorer -fscore -s SequencescorerOne.txt SequencescorerTwo.txt -k 4"
+  run "#{$bin}gt scorer -fscore -ii SequencescorerOne.txt SequencescorerTwo.txt -k 4"
   run "diff -B #{last_stdout} #{$testdata}sequencescorerCompare_TransProt7_k4.out"
   end
   
@@ -30,7 +30,7 @@ Keywords "gt_sequencescorer scorer fscore TransProt11"
 Test do
   run "#{$bin}gt encseq encode -smap TransProt11 #{$testdata}SequencescorerOne.txt"
   run "#{$bin}gt encseq encode -smap TransProt11 #{$testdata}SequencescorerTwo.txt"  
-  run "#{$bin}gt scorer -fscore -s SequencescorerOne.txt SequencescorerTwo.txt -k 5"
+  run "#{$bin}gt scorer -fscore -ii SequencescorerOne.txt SequencescorerTwo.txt -k 5"
   run "diff -B #{last_stdout} #{$testdata}sequencescorerCompare_TransProt11_k5.out"
 end 
 
@@ -60,7 +60,7 @@ Test do
   outfile.close
   run "#{$bin}gt encseq encode -smap TransProt7 #{$testdata}SequencescorerOne.txt"
   run "#{$bin}gt encseq encode -smap TransProt7 #{$testdata}SequencescorerTwo.txt"
-  run "#{$bin}gt scorer -qgram -s SequencescorerOne.txt SequencescorerTwo.txt -q 4"
+  run "#{$bin}gt scorer -qgram -ii SequencescorerOne.txt SequencescorerTwo.txt -q 4"
   outfile = File.new("#{last_stdout}", "r")
   qgramarray = outfile.readlines
   outfile.close
