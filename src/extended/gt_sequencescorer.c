@@ -82,7 +82,7 @@ static GtOptionParser* gt_sequencescorer_option_parser_new(void *tool_arguments)
   gt_assert(arguments);
 
   /* init */
-  op = gt_option_parser_new("[option] -s sequencefile [sequencefile] [...]",
+  op = gt_option_parser_new("[option] -ii queryfile [queryfile] [...]",
                             "Computes scores.");
 
   gt_option_parser_set_mail_address(op,"<hannah@rauterberg.eu>");
