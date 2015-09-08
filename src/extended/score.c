@@ -1,3 +1,16 @@
+/*printf("\n Sequenz: "GT_WU"\n", gt_encseq_seqnum(encseq, 0));
+for(i = 0; i < (gt_encseq_total_length(encseq)); i++)
+{
+  if(gt_encseq_position_is_separator(encseq, i, GT_READMODE_FORWARD))
+  {
+    printf("\n");
+    printf("Sequenz: "GT_WU"\n", gt_encseq_seqnum(encseq, i+1));
+    continue;
+  }
+  printf("%c",gt_encseq_get_decoded_char(encseq, i, GT_READMODE_FORWARD));
+}
+printf("\n");*/
+
 #include "core/encseq_api.h"
 #include "core/str_api.h"
 #include "core/codetype.h"
@@ -409,18 +422,20 @@ Score *calc_edist(GtEncseq *encseq_first,
 
 void calc_maxmatches(GtStrArray *seq,
                      Suffixarray *suffixarray,
-                     unsigned int suffixlength,
+                     GT_UNUSED unsigned int suffixlength,
                      GtError *err)
 {
   GtSeqIterator *seqit;
   bool haserr = false;
   GtUword totallength,
-          maxpreflength,
+          maxpreflength = 0,
           queryunitnum;
   int retval;
   const GtUchar *query;
   GtUword querylen;
   char *desc = NULL;
+  GtUword score = 0;
+
   seqit = gt_seq_iterator_sequence_buffer_new(seq, err);
   if (seqit == NULL)
     haserr = true;
@@ -437,7 +452,7 @@ void calc_maxmatches(GtStrArray *seq,
                                     &query,
                                     &querylen,
                                     &desc,
-                                    err);
+                                    err);                            
       if (retval < 0)
       {
         haserr = true;
@@ -447,16 +462,25 @@ void calc_maxmatches(GtStrArray *seq,
         break;
       if(!haserr)
       {
-        totallength = gt_encseq_total_length(suffixarray->encseq);
-        maxpreflength = gt_findmaximalprefixinESA(suffixarray->encseq,
-                                                  suffixarray->readmode,
-                                                  totallength,
-                                                  suffixarray->suftab,
-                                                  query,
-                                                  suffixlength);
-        printf("Score: "GT_WU" Querylen: "GT_WU"\n", maxpreflength, querylen);
-      }
-                                                
+        GtUword i = 0;
+        score = 0;
+        while(i < querylen)
+        {
+          totallength = gt_encseq_total_length(suffixarray->encseq);
+          maxpreflength = gt_findmaximalprefixinESA(suffixarray->encseq,
+                                                    suffixarray->readmode,
+                                                    totallength,
+                                                    suffixarray->suftab,
+                                                    &query[i],
+                                                    querylen);
+          if(i == i + maxpreflength)
+            break;
+          score++;
+          i = i + maxpreflength;
+        }
+        printf("Num: "GT_WU"\n", queryunitnum);
+        printf("Score: "GT_WU" length: "GT_WU"\n", score, querylen);
+      }                                                
     }
     gt_seq_iterator_delete(seqit);
     gt_freesuffixarray(suffixarray);
