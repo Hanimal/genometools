@@ -129,6 +129,13 @@ void gt_get_codes(const GtEncseq *encseq,
     pos = (gt_kmercodeiterator_encseq_get_currentpos(kc_iter)-len);
     if (gt_encseq_total_length(encseq) <= pos)
       break;
+    if (gt_encseq_position_is_wildcard(encseq,
+                                       pos,
+                                       GT_READMODE_FORWARD))
+    {
+      gt_warning("Sequence "GT_WU" contains wildcards. Resulting scores"\
+                 "migth be wrong.\n", gt_encseq_seqnum(encseq, pos));
+    }
     if (!(kmercode->definedspecialposition))
     {
       seqnum = gt_encseq_seqnum(encseq, pos);
