@@ -62,12 +62,10 @@ GtWord** new_table(GtUword seqlength_first, GtUword seqlength_second)
 {
   GtUword i;
   GtWord **table;
-
   table = malloc((seqlength_first+1)*sizeof(GtWord*));
   *table = malloc((seqlength_first+1)*(seqlength_second+1)*sizeof(GtWord));
   for (i=1; i <= seqlength_first; i++)
       table[i] = table[i-1]+(seqlength_second+1);
-
   return table;
 }
 
@@ -429,7 +427,6 @@ Score *calc_edist(GtEncseq *encseq_first,
 
 void calc_maxmatches(GtStrArray *seq,
                      Suffixarray *suffixarray,
-                     GT_UNUSED unsigned int suffixlength,
                      GtError *err)
 {
   GtSeqIterator *seqit;
@@ -479,19 +476,17 @@ void calc_maxmatches(GtStrArray *seq,
                                                     totallength,
                                                     suffixarray->suftab,
                                                     &query[i],
-                                                    querylen);
+                                                    querylen-i);
           if(i == i + maxpreflength)
             break;
           score++;
           i = i + maxpreflength;
         }
-        printf("Num: "GT_WU"\n", queryunitnum);
-        printf("Score: "GT_WU" length: "GT_WU"\n", score, querylen);
+        printf("Sequenz: "GT_WU" Score: "GT_WU"\n", queryunitnum, score);
       }                                                
     }
     gt_seq_iterator_delete(seqit);
     gt_freesuffixarray(suffixarray);
   }
-  
 }
 
