@@ -36,7 +36,6 @@ typedef struct
 {
   unsigned int k;
   unsigned int q;
-  unsigned int suffixlength;
   int indelscore;
   bool edist;
   bool fscore;
@@ -78,7 +77,7 @@ static GtOptionParser* gt_sequencescorer_option_parser_new(void *tool_arguments)
 
   GtOptionParser *op;
   GtOption *k, *q, *fscore, *queryoption, *qgram, *edist, *scorematrix,
-           *indelscore, *maxmatches, *suffixlength, *seq;
+           *indelscore, *maxmatches, *seq;
   gt_assert(arguments);
 
   /* init */
@@ -125,10 +124,6 @@ static GtOptionParser* gt_sequencescorer_option_parser_new(void *tool_arguments)
                                   "Suffixtab",
                                   &arguments->maxmatches, false);
   gt_option_parser_add_option(op, maxmatches);
-  suffixlength = gt_option_new_uint_min("suffixlength",
-                                        "length of suffix", 
-                                        &arguments->suffixlength, 3, 1);
-  gt_option_parser_add_option(op, suffixlength);
   seq = gt_option_new_filename_array("seq", "Specify Sequencefiles",
                                     arguments->seq);
   gt_option_parser_add_option(op, seq);
@@ -137,7 +132,6 @@ static GtOptionParser* gt_sequencescorer_option_parser_new(void *tool_arguments)
   gt_option_imply(edist, scorematrix);
   gt_option_imply(edist, indelscore);
   gt_option_imply(qgram, q);
-  gt_option_imply(maxmatches, suffixlength);
   gt_option_imply(maxmatches, seq);
   return op;
 }
@@ -308,7 +302,6 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
     gt_error_check(err);
     calc_maxmatches(arguments->seq,
                     &suffixarray,
-                    arguments->suffixlength,
                     err);  
   }
   if(encseq_first)
