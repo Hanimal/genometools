@@ -35,6 +35,8 @@ printf("\n");*/
 #include "scorematrix.h"
 
 #define SIZE 5
+#define MIN(A,B) ((A)<(B)?(A):(B))
+#define MAX(A,B) ((A)>(B)?(A):(B))
 
 GtUword** new_tau(GtUword numofsequences, GtUword r, GtUword length)
 {
@@ -76,22 +78,6 @@ void delete_table(GtWord **table)
     free(*table);
     free(table);
   }
-}
-
-GtUword min(GtUword a, GtUword b)
-{
-  if (a <= b)
-    return (a);
-  else
-    return (b);
-}
-
-GtWord max(GtWord a, GtWord b)
-{
-  if (a <= b)
-    return (b);
-  else
-    return (a);
 }
 
 void gt_get_codes(const GtEncseq *encseq,
@@ -258,11 +244,11 @@ Score *calc_fscore(GtEncseq *encseq_first,
         for (l = 0; l < pow(r,k); l++)
         {
           if (tu[i][l] > 0 && tv[j][l] > 0)
-             tmp += min(tu[i][l],tv[j][l]);
+             tmp += MIN(tu[i][l],tv[j][l]);
         }
         GtUword length_u = gt_encseq_seqlength(encseq_first, i);
         GtUword length_v = gt_encseq_seqlength(encseq_second, j);
-        dist = (float)tmp/(float)(min(length_u, length_v)-k+1);
+        dist = (float)tmp/(float)(MIN(length_u, length_v)-k+1);
         score[score->pos].dist = dist;
         score[score->pos].seqnum_u = i;
         score[score->pos].seqnum_v = j;
@@ -284,11 +270,11 @@ Score *calc_fscore(GtEncseq *encseq_first,
         for (l = 0; l < pow(r,k); l++)
         {
           if (tu[i][l] > 0 && tu[j][l] > 0)
-             tmp += min(tu[i][l],tu[j][l]);
+             tmp += MIN(tu[i][l],tu[j][l]);
         }
         GtUword length_u = gt_encseq_seqlength(encseq_first, i);
         GtUword length_v = gt_encseq_seqlength(encseq_first, j);
-        dist = (float)tmp/(float)(min(length_u, length_v)-k+1);
+        dist = (float)tmp/(float)(MIN(length_u, length_v)-k+1);
         score[score->pos].dist = dist;
         score[score->pos].seqnum_u = i;
         score[score->pos].seqnum_v = j;
@@ -304,8 +290,11 @@ Score *calc_edist(GtEncseq *encseq_first,
                   GtEncseq *encseq_second,
                   GtStr *scorematrix,
                   int indelscore,
-                  GT_UNUSED GtError *err)
+                  GtError *err)
 {
+  gt_error_check(err);
+  gt_assert(encseq_first != NULL);
+  
   Scorematrix *smatrix;
   FILE *fp;
   GtUword numofseqfirst,
@@ -320,109 +309,123 @@ Score *calc_edist(GtEncseq *encseq_first,
   GtWord ins, del, rep,
          **table;
   Score *score;
+  bool haserr = false;
 
   fp = fopen(gt_str_get(scorematrix), "r");
-  smatrix = read_score(fp);
-  fclose(fp);
-
-  numofseqfirst = gt_encseq_num_of_sequences(encseq_first);
-
-  if (encseq_first && encseq_second)
+  if(fp == NULL)
   {
-    numofseqsecond = gt_encseq_num_of_sequences(encseq_second);
+    gt_error_set(err,"Scorematrixfile %s does not exist.\n",
+                 gt_str_get(scorematrix));
+    haserr = true;
+  }
+  if(!haserr)
+  {  
+    smatrix = read_score(fp);
+    gt_assert(smatrix != NULL);
+    fclose(fp);
 
-    score = malloc(sizeof(Score)*((numofseqfirst*numofseqsecond)+1));
-    score->pos = 0;
-
-    for (u = 0; u < numofseqfirst; u++)
+    numofseqfirst = gt_encseq_num_of_sequences(encseq_first);
+    if (encseq_first && encseq_second)
     {
-      for (v = 0; v < numofseqsecond; v++)
+      numofseqsecond = gt_encseq_num_of_sequences(encseq_second);
+
+      score = malloc(sizeof(Score)*((numofseqfirst*numofseqsecond)+1));
+      score->pos = 0;
+
+      for (u = 0; u < numofseqfirst; u++)
       {
-        startone = gt_encseq_seqstartpos(encseq_first,u);
-        starttwo = gt_encseq_seqstartpos(encseq_second,v);
-        m = gt_encseq_seqlength(encseq_first,u);
-        n = gt_encseq_seqlength(encseq_second,v);
-
-        table = new_table(m, n);
-        table[0][0] = 0;
-        for (i = 1; i <= m; i++)
-          table[i][0] = table[i-1][0] + indelscore;
-
-        for (j = 1; j <= n; j++)
+        for (v = 0; v < numofseqsecond; v++)
         {
-          table[0][j] = table[0][j-1] + indelscore;
+          startone = gt_encseq_seqstartpos(encseq_first,u);
+          starttwo = gt_encseq_seqstartpos(encseq_second,v);
+          m = gt_encseq_seqlength(encseq_first,u);
+          n = gt_encseq_seqlength(encseq_second,v);
+
+          table = new_table(m, n);
+          table[0][0] = 0;
           for (i = 1; i <= m; i++)
+            table[i][0] = table[i-1][0] + indelscore;
+
+          for (j = 1; j <= n; j++)
           {
-            ins = table[i][j-1] + indelscore;
-            del = table[i-1][j] + indelscore;
-            char one = gt_encseq_get_decoded_char(encseq_first,
-                                                  i+startone-1,
-                                                  GT_READMODE_FORWARD);
-            char two = gt_encseq_get_decoded_char(encseq_second,
-                                                  j+starttwo-1,
-                                                  GT_READMODE_FORWARD);
-            rep = table[i-1][j-1] + access_scorematrix(smatrix, one, two);
-            tmp = max(ins, del);
-            maximum = max(tmp, rep);
-            table[i][j] = maximum;
+            table[0][j] = table[0][j-1] + indelscore;
+            for (i = 1; i <= m; i++)
+            {
+              ins = table[i][j-1] + indelscore;
+              del = table[i-1][j] + indelscore;
+              char one = gt_encseq_get_decoded_char(encseq_first,
+                                                    i+startone-1,
+                                                    GT_READMODE_FORWARD);
+              char two = gt_encseq_get_decoded_char(encseq_second,
+                                                    j+starttwo-1,
+                                                    GT_READMODE_FORWARD);
+              rep = table[i-1][j-1] + access_scorematrix(smatrix, one, two);
+              tmp = MAX(ins, del);
+              maximum = MAX(tmp, rep);
+              if(maximum == LONG_MAX)
+                haserr = true;
+              table[i][j] = maximum;
+            }
           }
+          score[score->pos].dist = table[m][n];
+          score[score->pos].seqnum_u = u;
+          score[score->pos].seqnum_v = v;
+          score->pos++;
+          delete_table(table);
         }
-        score[score->pos].dist = table[m][n];
-        score[score->pos].seqnum_u = u;
-        score[score->pos].seqnum_v = v;
-        score->pos++;
-        delete_table(table);
       }
     }
-  }
-  else
-  {
-    score = malloc(sizeof(Score)*((numofseqfirst*numofseqfirst)+1));
-    score->pos = 0;
-
-    for (u = 0; u < numofseqfirst; u++)
+    else
     {
-      for (v = (u+1); v < numofseqfirst; v++)
+      score = malloc(sizeof(Score)*((numofseqfirst*numofseqfirst)+1));
+      score->pos = 0;
+
+      for (u = 0; u < numofseqfirst; u++)
       {
-        startone = gt_encseq_seqstartpos(encseq_first,u);
-        starttwo = gt_encseq_seqstartpos(encseq_first,v);
-        m = gt_encseq_seqlength(encseq_first,u);
-        n = gt_encseq_seqlength(encseq_first,v);
-
-        table = new_table(m, n);
-        table[0][0] = 0;
-        for (i = 1; i <= m; i++)
-          table[i][0] = table[i-1][0] + indelscore;
-
-        for (j = 1; j <= n; j++)
+        for (v = (u+1); v < numofseqfirst; v++)
         {
-          table[0][j] = table[0][j-1] + indelscore;
+          startone = gt_encseq_seqstartpos(encseq_first,u);
+          starttwo = gt_encseq_seqstartpos(encseq_first,v);
+          m = gt_encseq_seqlength(encseq_first,u);
+          n = gt_encseq_seqlength(encseq_first,v);
+
+          table = new_table(m, n);
+          table[0][0] = 0;
           for (i = 1; i <= m; i++)
+            table[i][0] = table[i-1][0] + indelscore;
+
+          for (j = 1; j <= n; j++)
           {
-            ins = table[i][j-1] + indelscore;
-            del = table[i-1][j] + indelscore;
-            char one = gt_encseq_get_decoded_char(encseq_first,
-                                                  i+startone-1,
-                                                  GT_READMODE_FORWARD);
-            char two = gt_encseq_get_decoded_char(encseq_first,
-                                                  j+starttwo-1,
-                                                  GT_READMODE_FORWARD);
-            rep = table[i-1][j-1] + access_scorematrix(smatrix, one, two);
-            tmp = max(ins, del);
-            maximum = max(tmp, rep);
-            table[i][j] = maximum;
+            table[0][j] = table[0][j-1] + indelscore;
+            for (i = 1; i <= m; i++)
+            {
+              ins = table[i][j-1] + indelscore;
+              del = table[i-1][j] + indelscore;
+              char one = gt_encseq_get_decoded_char(encseq_first,
+                                                    i+startone-1,
+                                                    GT_READMODE_FORWARD);
+              char two = gt_encseq_get_decoded_char(encseq_first,
+                                                    j+starttwo-1,
+                                                    GT_READMODE_FORWARD);
+              rep = table[i-1][j-1] + access_scorematrix(smatrix, one, two);
+              tmp = MAX(ins, del);
+              maximum = MAX(tmp, rep);
+              if(maximum == LONG_MAX)
+                haserr = true;
+              table[i][j] = maximum;
+            }
           }
+          score[score->pos].dist = table[m][n];
+          score[score->pos].seqnum_u = u;
+          score[score->pos].seqnum_v = v;
+          score->pos++;
+          delete_table(table);
         }
-        score[score->pos].dist = table[m][n];
-        score[score->pos].seqnum_u = u;
-        score[score->pos].seqnum_v = v;
-        score->pos++;
-        delete_table(table);
       }
     }
-  }
   delete_scorematrix(smatrix);
-  return score;
+  }
+  return (haserr)? NULL : score;
 }
 
 void calc_maxmatches(GtStrArray *seq,
@@ -486,7 +489,6 @@ void calc_maxmatches(GtStrArray *seq,
       }                                                
     }
     gt_seq_iterator_delete(seqit);
-    gt_freesuffixarray(suffixarray);
   }
 }
 

@@ -152,21 +152,19 @@ static GtEncseq *gt_encseq_get_encseq(const char *seqfile,
 {
     GtEncseqLoader *encseq_loader;
     GtEncseq *encseq;
-    int had_err = 0;
+    bool haserr = false;
     gt_error_check(err);
     gt_assert(seqfile);
 
     encseq_loader = gt_encseq_loader_new();
     if (!(encseq = gt_encseq_loader_load(encseq_loader, seqfile, err)))
-      had_err = -1;
-
+      haserr = true;
     gt_encseq_loader_delete(encseq_loader);
-
-    if (!had_err)
+    if (!haserr)
     {
       if (!gt_encseq_has_description_support(encseq))
         gt_warning("Missing description support for file %s", seqfile);
-        return encseq;
+      return encseq;
     }
     else
       return NULL;
@@ -203,30 +201,34 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
         gt_error_set(err,"Sequencefile does not exist.\n");
         haserr = true;
       }
-      gt_error_check(err);
     }
     else
     {
       encseq_first = gt_encseq_get_encseq(gt_str_array_get(arguments->queryfiles,
                                                            0), err);
-      if (!encseq_first)
+      if (encseq_first == NULL)
       {
         gt_error_set(err,"Sequencefile %s does not exist.\n",
                           gt_str_array_get(arguments->queryfiles,0));
         haserr = true;
       }
-      gt_error_check(err);
       encseq_second = gt_encseq_get_encseq(gt_str_array_get(arguments->queryfiles,
                                                             1), err);
-      if (!encseq_second)
+      if (encseq_second == NULL)
       {
         gt_error_set(err,"Sequencefile %s does not exist.\n",
                           gt_str_array_get(arguments->queryfiles,1));
         haserr = true;
       }
-      gt_error_check(err);
-      gt_assert(gt_alphabet_equals(gt_encseq_alphabet(encseq_first),
-                                   gt_encseq_alphabet(encseq_second)));
+      if(!haserr)
+      {
+        if(!gt_alphabet_equals(gt_encseq_alphabet(encseq_first),
+                               gt_encseq_alphabet(encseq_second)))
+        {
+          gt_error_set(err,"Files encoded with different alphabets.");
+          haserr = true;
+        }
+      }
     }
   }
   if (arguments->fscore == true && !haserr)
@@ -281,13 +283,17 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
                        arguments->scorematrix,
                        arguments->indelscore,
                        err);
-
-    for (i = 0; i < score->pos; i++)
+    if(score == NULL)
+      gt_error_set(err,"Error computing Editdistance\n");
+    else
     {
-      printf("Editdistance between sequence "GT_WU" and "GT_WU" is %.0f.\n",
-          score[i].seqnum_u, score[i].seqnum_v, score[i].dist);
+      for (i = 0; i < score->pos; i++)
+      {
+        printf("Editdistance between sequence "GT_WU" and "GT_WU" is %.0f.\n",
+            score[i].seqnum_u, score[i].seqnum_v, score[i].dist);
+      }
+      free(score);
     }
-    free(score);
   }
   if (arguments->maxmatches == true && !haserr)
   {
@@ -302,7 +308,9 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
     gt_error_check(err);
     calc_maxmatches(arguments->seq,
                     &suffixarray,
-                    err);  
+                    err);
+    gt_freesuffixarray(&suffixarray);
+    gt_logger_delete(logger);
   }
   if(encseq_first)
     gt_encseq_delete(encseq_first);
