@@ -480,12 +480,12 @@ void calc_maxmatches(GtStrArray *seq,
                                                     suffixarray->suftab,
                                                     &query[i],
                                                     querylen-i);
-          if(i == i + maxpreflength)
+          if(i == i + maxpreflength || maxpreflength == querylen)
             break;
           score++;
           i = i + maxpreflength;
         }
-        printf("Sequenz: "GT_WU" Score: "GT_WU"\n", queryunitnum, score);
+        printf("Sequenz: "GT_WU"\tScore: "GT_WU"\n", queryunitnum, score);
       }                                                
     }
     gt_seq_iterator_delete(seqit);

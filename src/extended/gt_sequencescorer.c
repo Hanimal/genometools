@@ -299,7 +299,7 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
   {
     Suffixarray suffixarray;
     GtLogger *logger;
-    logger = gt_logger_new(true, "# ", stderr); 
+    logger = gt_logger_new(false, "# ", stderr); 
     gt_mapsuffixarray(&suffixarray,
                       SARR_SUFTAB | SARR_ESQTAB, 
                       gt_str_array_get(arguments->queryfiles,0),
