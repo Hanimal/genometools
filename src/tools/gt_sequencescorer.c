@@ -22,15 +22,14 @@
 #include "core/encseq_options.h"
 #include "core/fileutils.h"
 #include "core/str_array_api.h"
-#include "tools/gt_encseq_encode.h"
 #include "core/warning_api.h"
 #include "core/assert_api.h"
 #include "match/esa-splititv.h"
 #include "match/sfx-mappedstr.h"
 #include "match/esa-map.h"
 
-#include "gt_sequencescorer.h"
-#include "score.h"
+#include "tools/gt_sequencescorer.h"
+#include "extended/align_free_score.h"
 
 typedef struct
 {
@@ -85,13 +84,13 @@ static GtOptionParser* gt_sequencescorer_option_parser_new(void *tool_arguments)
                             "Computes scores.");
 
   gt_option_parser_set_mail_address(op,"<hannah@rauterberg.eu>");
-  
+
   queryoption = gt_option_new_filename_array("ii", "Specify query files.\n"
                                             "Either Encseq or Suffixarray",
                                              arguments->queryfiles);
   gt_option_parser_add_option(op, queryoption);
   gt_option_is_mandatory(queryoption);
-  
+
   /*fscore*/
   fscore = gt_option_new_bool("fscore", "computes fscore",
                               &arguments->fscore, false);
@@ -110,7 +109,7 @@ static GtOptionParser* gt_sequencescorer_option_parser_new(void *tool_arguments)
   scorematrix = gt_option_new_filename("smatrix", "Specify Scorematrix",
                                        arguments->scorematrix);
   gt_option_parser_add_option(op, scorematrix);
-  
+
   /*qgram*/
   qgram = gt_option_new_bool("qgram", "computes qgram distance",
                               &arguments->qgram, false);
@@ -184,7 +183,7 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
 
   GtEncseq *encseq_first = NULL;
   GtEncseq *encseq_second = NULL;
-  if(arguments->maxmatches == false)
+  if (arguments->maxmatches == false)
   {
     if ((gt_str_array_size(arguments->queryfiles) == 0)||
         (gt_str_array_size(arguments->queryfiles) > 2))
@@ -194,8 +193,8 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
     }
     else if (gt_str_array_size(arguments->queryfiles) == 1)
     {
-      encseq_first = gt_encseq_get_encseq(gt_str_array_get(arguments->queryfiles,
-                                                           0), err);
+      encseq_first=gt_encseq_get_encseq(gt_str_array_get(arguments->queryfiles,
+                                                         0), err);
       if (!encseq_first)
       {
         gt_error_set(err,"Sequencefile does not exist.\n");
@@ -204,25 +203,25 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
     }
     else
     {
-      encseq_first = gt_encseq_get_encseq(gt_str_array_get(arguments->queryfiles,
-                                                           0), err);
+      encseq_first=gt_encseq_get_encseq(gt_str_array_get(arguments->queryfiles,
+                                                         0), err);
       if (encseq_first == NULL)
       {
         gt_error_set(err,"Sequencefile %s does not exist.\n",
                           gt_str_array_get(arguments->queryfiles,0));
         haserr = true;
       }
-      encseq_second = gt_encseq_get_encseq(gt_str_array_get(arguments->queryfiles,
-                                                            1), err);
+      encseq_second=gt_encseq_get_encseq(gt_str_array_get(arguments->queryfiles,
+                                                          1), err);
       if (encseq_second == NULL)
       {
         gt_error_set(err,"Sequencefile %s does not exist.\n",
                           gt_str_array_get(arguments->queryfiles,1));
         haserr = true;
       }
-      if(!haserr)
+      if (!haserr)
       {
-        if(!gt_alphabet_equals(gt_encseq_alphabet(encseq_first),
+        if (!gt_alphabet_equals(gt_encseq_alphabet(encseq_first),
                                gt_encseq_alphabet(encseq_second)))
         {
           gt_error_set(err,"Files encoded with different alphabets.");
@@ -239,11 +238,22 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
     gt_assert(encseq_first);
     r = gt_alphabet_size(gt_encseq_alphabet(encseq_first));
 
-    score = calc_fscore(encseq_first,
-                        encseq_second,
-                        r,
-                        arguments->k,
-                        err);
+    if (encseq_second)
+    {
+      score = calc_fscore(encseq_first,
+                          encseq_second,
+                          r,
+                          arguments->k,
+                          err);
+    }
+    else
+    {
+      score = calc_fscore(encseq_first,
+                          encseq_first,
+                          r,
+                          arguments->k,
+                          err);
+    }
 
     for (i = 0; i < score->pos; i++)
     {
@@ -259,12 +269,22 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
             i;
     gt_assert(encseq_first);
     r = gt_alphabet_size(gt_encseq_alphabet(encseq_first));
-
-    score = calc_qgram(encseq_first,
-                       encseq_second,
-                       r,
-                       arguments->q,
-                       err);
+    if (encseq_second)
+    {
+      score = calc_qgram(encseq_first,
+                         encseq_second,
+                         r,
+                         arguments->q,
+                         err);
+    }
+    else
+    {
+      score = calc_qgram(encseq_first,
+                         encseq_first,
+                         r,
+                         arguments->q,
+                         err);
+    }
 
     for (i = 0; i < score->pos; i++)
     {
@@ -283,7 +303,7 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
                        arguments->scorematrix,
                        arguments->indelscore,
                        err);
-    if(score == NULL)
+    if (score == NULL)
       gt_error_set(err,"Error computing Editdistance\n");
     else
     {
@@ -299,9 +319,9 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
   {
     Suffixarray suffixarray;
     GtLogger *logger;
-    logger = gt_logger_new(false, "# ", stderr); 
+    logger = gt_logger_new(false, "# ", stderr);
     gt_mapsuffixarray(&suffixarray,
-                      SARR_SUFTAB | SARR_ESQTAB, 
+                      SARR_SUFTAB | SARR_ESQTAB,
                       gt_str_array_get(arguments->queryfiles,0),
                       logger,
                       err);
@@ -312,9 +332,9 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
     gt_freesuffixarray(&suffixarray);
     gt_logger_delete(logger);
   }
-  if(encseq_first)
+  if (encseq_first)
     gt_encseq_delete(encseq_first);
-  if(encseq_second)
+  if (encseq_second)
     gt_encseq_delete(encseq_second);
   return haserr;
 }
