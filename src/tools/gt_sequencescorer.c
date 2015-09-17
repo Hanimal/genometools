@@ -15,17 +15,13 @@
   OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 
-#include "core/ma.h"
 #include "core/unused_api.h"
 #include "core/alphabet.h"
 #include "core/encseq.h"
-#include "core/encseq_options.h"
-#include "core/fileutils.h"
 #include "core/str_array_api.h"
 #include "core/warning_api.h"
 #include "core/assert_api.h"
-#include "match/esa-splititv.h"
-#include "match/sfx-mappedstr.h"
+#include "core/array2dim_api.h"
 #include "match/esa-map.h"
 
 #include "tools/gt_sequencescorer.h"
@@ -185,8 +181,7 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
   GtEncseq *encseq_second = NULL;
   if (arguments->maxmatches == false)
   {
-    if ((gt_str_array_size(arguments->queryfiles) == 0)||
-        (gt_str_array_size(arguments->queryfiles) > 2))
+    if (gt_str_array_size(arguments->queryfiles) > 2)
     {
       gt_error_set(err,"At least one and at most two sequencefiles allowed.\n");
       haserr = true;
@@ -200,6 +195,7 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
         gt_error_set(err,"Sequencefile does not exist.\n");
         haserr = true;
       }
+      encseq_second = encseq_first;
     }
     else
     {
@@ -230,73 +226,84 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
       }
     }
   }
+  bool compare = true;
+  if (encseq_first == encseq_second)
+  {
+    compare = false;
+  }
   if (arguments->fscore == true && !haserr)
   {
-    Score *score;
-    GtUword r,
-            i;
+    double **score;
+    GtUword numofseqfirst,
+            numofseqsecond,
+            r, i, j;
     gt_assert(encseq_first);
-    r = gt_alphabet_size(gt_encseq_alphabet(encseq_first));
 
-    if (encseq_second)
+    r = gt_alphabet_size(gt_encseq_alphabet(encseq_first));
+    score = calc_fscore(encseq_first,
+                        encseq_second,
+                        r,
+                        arguments->k,
+                        err);
+    numofseqfirst = gt_encseq_num_of_sequences(encseq_first);
+    if (!compare)
     {
-      score = calc_fscore(encseq_first,
-                          encseq_second,
-                          r,
-                          arguments->k,
-                          err);
+      numofseqsecond = numofseqfirst;
     }
     else
     {
-      score = calc_fscore(encseq_first,
-                          encseq_first,
-                          r,
-                          arguments->k,
-                          err);
+      numofseqsecond = gt_encseq_num_of_sequences(encseq_second);
     }
-
-    for (i = 0; i < score->pos; i++)
+    for (i = 0; i < numofseqfirst; i++)
     {
-      printf("Fscore between sequence "GT_WU" and "GT_WU" is %.3f.\n",
-          score[i].seqnum_u, score[i].seqnum_v, score[i].dist);
+      GtUword startidx = (!compare)? i+1 : 0;
+      for (j = startidx; j < numofseqsecond; j++)
+      {
+        printf("Fscore between sequence "GT_WU" and "GT_WU" is %.3f.\n",
+            i, j, score[i][j]);
+      }
     }
-    free(score);
+    gt_array2dim_delete(score);
   }
   if (arguments->qgram == true && !haserr)
   {
-    Score *score;
-    GtUword r,
-            i;
+    GtUword numofseqfirst,
+            numofseqsecond,
+            r, i, j,
+            **score;
     gt_assert(encseq_first);
     r = gt_alphabet_size(gt_encseq_alphabet(encseq_first));
-    if (encseq_second)
+    score = calc_qgram(encseq_first,
+                       encseq_second,
+                       r,
+                       arguments->q,
+                       err);
+    numofseqfirst = gt_encseq_num_of_sequences(encseq_first);
+    if (!compare)
     {
-      score = calc_qgram(encseq_first,
-                         encseq_second,
-                         r,
-                         arguments->q,
-                         err);
+      numofseqsecond = numofseqfirst;
     }
     else
     {
-      score = calc_qgram(encseq_first,
-                         encseq_first,
-                         r,
-                         arguments->q,
-                         err);
+      numofseqsecond = gt_encseq_num_of_sequences(encseq_second);
     }
-
-    for (i = 0; i < score->pos; i++)
+    for (i = 0; i < numofseqfirst; i++)
     {
-      printf("Qgramdistance between sequence "GT_WU" and "GT_WU" is %.0f.\n",
-          score[i].seqnum_u, score[i].seqnum_v, score[i].dist);
+      GtUword startidx = (!compare)? i+1 : 0;
+      for (j = startidx; j < numofseqsecond; j++)
+      {
+        printf("Qgramdistance between sequence "GT_WU" and "GT_WU" "\
+               "is "GT_WU".\n", i, j, score[i][j]);
+      }
     }
-    free(score);
+    gt_array2dim_delete(score);
   }
   if (arguments->edist == true && !haserr)
   {
-    GtUword i;
-    Score *score;
+    GtWord **score;
+    GtUword numofseqfirst,
+            numofseqsecond,
+            i, j;
     gt_assert(encseq_first);
     score = calc_edist(encseq_first,
                        encseq_second,
@@ -307,12 +314,25 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
       gt_error_set(err,"Error computing Editdistance\n");
     else
     {
-      for (i = 0; i < score->pos; i++)
+      numofseqfirst = gt_encseq_num_of_sequences(encseq_first);
+      if (!compare)
       {
-        printf("Editdistance between sequence "GT_WU" and "GT_WU" is %.0f.\n",
-            score[i].seqnum_u, score[i].seqnum_v, score[i].dist);
+        numofseqsecond = numofseqfirst;
       }
-      free(score);
+      else
+      {
+        numofseqsecond = gt_encseq_num_of_sequences(encseq_second);
+      }
+      for (i = 0; i < numofseqfirst; i++)
+      {
+        GtUword startidx = (!compare)? i+1 : 0;
+        for (j = startidx; j < numofseqsecond; j++)
+        {
+          printf("Editdistance between sequence "GT_WU" and "GT_WU" "\
+                 "is "GT_WD".\n", i, j, score[i][j]);
+        }
+      }
+      gt_array2dim_delete(score);
     }
   }
   if (arguments->maxmatches == true && !haserr)
@@ -320,22 +340,35 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
     Suffixarray suffixarray;
     GtLogger *logger;
     logger = gt_logger_new(false, "# ", stderr);
+    Maxmatch *score;
+    GtUword i;
     gt_mapsuffixarray(&suffixarray,
                       SARR_SUFTAB | SARR_ESQTAB,
                       gt_str_array_get(arguments->queryfiles,0),
                       logger,
                       err);
     gt_error_check(err);
-    calc_maxmatches(arguments->seq,
-                    &suffixarray,
-                    err);
+    score = calc_maxmatches(arguments->seq,
+                            &suffixarray,
+                            err);
+    for (i = 0; i < score->numofseq; i++)
+    {
+      printf("Maxmatches in sequence "GT_WU" are "GT_WU"\n", i, score->dist[i]);
+    }
+    gt_free(score->dist);
+    gt_free(score);
     gt_freesuffixarray(&suffixarray);
     gt_logger_delete(logger);
   }
-  if (encseq_first)
+  if (encseq_first == encseq_second)
+  {
     gt_encseq_delete(encseq_first);
-  if (encseq_second)
+  }
+  else
+  {
+    gt_encseq_delete(encseq_first);
     gt_encseq_delete(encseq_second);
+  }
   return haserr;
 }
 
