@@ -2,31 +2,29 @@
 #define ALIGN_FREE_SCORE_H
 
 typedef struct{
-  GtUword seqnum_u,
-          seqnum_v,
-          pos;
-  float dist;
-}Score;
+  GtUword *dist,
+          numofseq;
+}Maxmatch;
 
-Score* calc_fscore(GtEncseq *encseq_first,
-                   GtEncseq *encseq_second,
-                   GtUword r,
-                   GtUword k,
-                   GtError *err);
-
-Score *calc_qgram(const GtEncseq *encseq_first,
-                  const GtEncseq *encseq_second,
-                  GtUword r,
-                  GtUword q,
-                  GtError *err);
-
-Score *calc_edist(GtEncseq *encseq_first,
-                  GtEncseq *encseq_second,
-                  GtStr *scorematrix,
-                  int indelscore,
-                  GT_UNUSED GtError *err);
-
-void calc_maxmatches(GtStrArray *seq,
-                     Suffixarray *suffixarray,
+double **calc_fscore(const GtEncseq *encseq_first,
+                     const GtEncseq *encseq_second,
+                     GtUword r,
+                     GtUword k,
                      GtError *err);
+
+GtUword **calc_qgram(const GtEncseq *encseq_first,
+                     const GtEncseq *encseq_second,
+                     GtUword r,
+                     GtUword q,
+                     GtError *err);
+
+GtWord **calc_edist(const GtEncseq *encseq_first,
+                    const GtEncseq *encseq_second,
+                    GtStr *scorematrix,
+                    int indelscore,
+                    GtError *err);
+
+Maxmatch *calc_maxmatches(const GtStrArray *seq,
+                          const Suffixarray *suffixarray,
+                          GtError *err);
 #endif

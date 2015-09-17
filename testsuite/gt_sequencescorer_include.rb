@@ -163,7 +163,7 @@ Test do
 end 
 =end
 
-Name "gt sequencescorer MaxMatches lowerbound unitcost"
+Name "gt sequencescorer MaxMatches lowerbound maxmatches"
 Keywords "gt_sequencescorer scorer maxmatches lowerbound"
 Test do
   edist = File.new("calcEdist.txt", "w")
