@@ -259,7 +259,7 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
       GtUword startidx = (!compare)? i+1 : 0;
       for (j = startidx; j < numofseqsecond; j++)
       {
-        printf("Fscore between sequence "GT_WU" and "GT_WU" is %.3f.\n",
+        printf("Fscore between sequence "GT_WU" and "GT_WU" is %.3f\n",
             i, j, score[i][j]);
       }
     }
@@ -293,7 +293,7 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
       for (j = startidx; j < numofseqsecond; j++)
       {
         printf("Qgramdistance between sequence "GT_WU" and "GT_WU" "\
-               "is "GT_WU".\n", i, j, score[i][j]);
+               "is "GT_WU"\n", i, j, score[i][j]);
       }
     }
     gt_array2dim_delete(score);
@@ -329,7 +329,7 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
         for (j = startidx; j < numofseqsecond; j++)
         {
           printf("Editdistance between sequence "GT_WU" and "GT_WU" "\
-                 "is "GT_WD".\n", i, j, score[i][j]);
+                 "is "GT_WD"\n", i, j, score[i][j]);
         }
       }
       gt_array2dim_delete(score);
