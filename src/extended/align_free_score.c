@@ -349,7 +349,7 @@ Maxmatch *calc_maxmatches(const GtStrArray *seq,
       if (queryunitnum == size)
       {
         size += 10;
-        score->dist = (GtUword*)gt_realloc(score->dist,sizeof(GtUword)*size);
+        score->dist = gt_realloc(score->dist,sizeof(GtUword)*size);
       }
       retval = gt_seq_iterator_next(seqit, &query, &querylen, &desc, err);
       if (retval < 0)
