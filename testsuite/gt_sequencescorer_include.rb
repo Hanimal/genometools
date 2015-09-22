@@ -120,7 +120,7 @@ Test do
 end 
 
 
-Name "gt sequencescorer Qgramdistance lowerbound unitcost"
+Name "gt sequencescorer Qgramdistance lowerbound"
 Keywords "gt_sequencescorer scorer qgram lowerbound"
 Test do
   outfile = File.new("edist.txt", "w")
@@ -164,7 +164,11 @@ Keywords "gt_sequencescorer scorer maxmatches lowerbound"
 Test do
   tmp = ""
   edist = File.new("calcEdist.txt", "w")
-  fi = FastaIterator.new("#{$testdata}sw100K1.fsa")
+  `#{$bin}gt encseq encode -smap TransProt7 #{$testdata}sw100K1.fsa`
+  data = File.new("data.fas", "w")
+  data << `#{$bin}gt encseq decode sw100K1.fsa`
+  data.close
+  fi = FastaIterator.new("data.fas")
   fi.each do |header,sequence|
     tmp = sequence
     break
@@ -180,7 +184,7 @@ Test do
   run "#{$bin}gt suffixerator -db FirstSeq.txt -suf -tis -smap TransProt7 "\
       "-des no -md5 no -sds no"
   run "#{$bin}gt scorer -maxmatches -ii FirstSeq.txt "\
-      "-seq #{$testdata}sw100K1.fsa"
+      "-seq data.fas"
   maxmatches = File.new("#{last_stdout}", "r")
   mmarray = maxmatches.readlines
   maxmatches.close
