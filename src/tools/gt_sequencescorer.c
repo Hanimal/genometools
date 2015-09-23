@@ -143,7 +143,7 @@ static int gt_sequencescorer_arguments_check(GT_UNUSED int rest_argc,
 }
 
 static GtEncseq *get_encseq(const char *seqfile,
-                                      GtError *err)
+                            GtError *err)
 {
     GtEncseqLoader *encseq_loader;
     GtEncseq *encseq;
@@ -157,12 +157,12 @@ static GtEncseq *get_encseq(const char *seqfile,
     gt_encseq_loader_delete(encseq_loader);
     if (!haserr)
     {
-      if (!gt_encseq_has_description_support(encseq))
-        gt_warning("Missing description support for file %s", seqfile);
       return encseq;
     }
     else
+    {
       return NULL;
+    }
 }
 
 static int gt_sequencescorer_runner(GT_UNUSED int argc,
@@ -179,7 +179,8 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
 
   GtEncseq *encseq_first = NULL;
   GtEncseq *encseq_second = NULL;
-  if (arguments->maxmatches == false)
+  
+  if (!arguments->maxmatches)
   {
     if (gt_str_array_size(arguments->queryfiles) > 2)
     {
@@ -238,7 +239,7 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
             numofseqsecond,
             r, i, j;
     gt_assert(encseq_first && encseq_second);
-
+    gt_error_check(err);  
     r = gt_alphabet_size(gt_encseq_alphabet(encseq_first));
     score = calc_fscore(encseq_first,
                         encseq_second,
@@ -271,7 +272,9 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
             numofseqsecond,
             r, i, j,
             **score;
-    gt_assert(encseq_first);
+            
+    gt_assert(encseq_first && encseq_second);
+    gt_error_check(err);
     r = gt_alphabet_size(gt_encseq_alphabet(encseq_first));
     score = calc_qgram(encseq_first,
                        encseq_second,
@@ -304,7 +307,9 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
     GtUword numofseqfirst,
             numofseqsecond,
             i, j;
-    gt_assert(encseq_first);
+            
+    gt_assert(encseq_first && encseq_second);
+    gt_error_check(err);
     score = calc_edist(encseq_first,
                        encseq_second,
                        arguments->scorematrix,
@@ -340,8 +345,7 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
   if (arguments->maxmatches && !haserr)
   {
     Suffixarray suffixarray;
-    GtLogger *logger;
-    logger = gt_logger_new(false, "# ", stderr);
+    GtLogger *logger = gt_logger_new(false, "# ", stderr);
     Maxmatch *score;
     GtUword i;
     gt_mapsuffixarray(&suffixarray,
@@ -365,18 +369,21 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
         }
         gt_free(score->dist);
         gt_free(score);
-        gt_freesuffixarray(&suffixarray);
-        gt_logger_delete(logger);
     }
+    gt_freesuffixarray(&suffixarray);
+    gt_logger_delete(logger);
   }
-  if (!compare)
+  if (!arguments->maxmatches)
   {
-    gt_encseq_delete(encseq_first);
-  }
-  else
-  {
-    gt_encseq_delete(encseq_first);
-    gt_encseq_delete(encseq_second);
+    if (!compare)
+    {
+      gt_encseq_delete(encseq_first);
+    }
+    else
+    {
+      gt_encseq_delete(encseq_first);
+      gt_encseq_delete(encseq_second);
+    }
   }
   return haserr;
 }
