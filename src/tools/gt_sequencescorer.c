@@ -270,8 +270,8 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
   {
     GtUword numofseqfirst,
             numofseqsecond,
-            r, i, j,
-            **score;
+            r, i, j;
+    double **score;
             
     gt_assert(encseq_first && encseq_second);
     gt_error_check(err);
@@ -296,7 +296,7 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
       for (j = startidx; j < numofseqsecond; j++)
       {
         printf("Qgramdistance between sequence "GT_WU" and "GT_WU" "\
-               "is "GT_WU"\n", i, j, score[i][j]);
+               "is %.3f\n", i, j, score[i][j]);
       }
     }
     gt_array2dim_delete(score);
@@ -365,7 +365,8 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
     {
         for (i = 0; i < score->numofseq; i++)
         {
-          printf("Maxmatches in sequence "GT_WU" are "GT_WU"\n", i, score->dist[i]);
+          printf("Maxmatchesscore in sequence "GT_WU" is %.3f\n", 
+                 i, score->dist[i]);
         }
         gt_free(score->dist);
         gt_free(score);

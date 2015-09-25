@@ -84,7 +84,7 @@ void get_codes(const GtEncseq *encseq,
   gt_kmercodeiterator_delete(kc_iter);
 }
 
-GtUword **calc_qgram(const GtEncseq *encseq_first,
+double **calc_qgram(const GtEncseq *encseq_first,
                      const GtEncseq *encseq_second,
                      GtUword r,
                      GtUword q,
@@ -92,8 +92,8 @@ GtUword **calc_qgram(const GtEncseq *encseq_first,
 {
   GtUword numofseqfirst,
           numofseqsecond,
-          i, j, l, range,
-          **score;
+          i, j, l, range;
+  double **score;
   GtKmercount **tu,
               **tv;
   bool compare = true;
@@ -135,7 +135,10 @@ GtUword **calc_qgram(const GtEncseq *encseq_first,
           dist += abs(tu[i][l] - tv[j][l]);
         }
       }
-      score[i][j] = dist;
+      GtUword length_u = gt_encseq_seqlength(encseq_first, i);
+      GtUword length_v = gt_encseq_seqlength(encseq_second, j);
+      GtUword qmax = (length_u-q+1)+(length_v-q+1);
+      score[i][j] = (double)(qmax-dist)/(double)qmax;
     }
   }
   if (!compare)
@@ -343,13 +346,13 @@ Maxmatch *calc_maxmatches(const GtStrArray *seq,
                                   gt_alphabet_symbolmap(gt_encseq_alphabet(
                                                         suffixarray->encseq)));
     score = gt_malloc(sizeof(Maxmatch));
-    score->dist = gt_malloc(sizeof(GtUword)*size);
+    score->dist = gt_malloc(sizeof(double)*size);
     for (queryunitnum = 0; /* Nothing */; queryunitnum++)
     {
       if (queryunitnum == size)
       {
         size += 10;
-        score->dist = gt_realloc(score->dist,sizeof(GtUword)*size);
+        score->dist = gt_realloc(score->dist,sizeof(double)*size);
       }
       retval = gt_seq_iterator_next(seqit, &query, &querylen, &desc, err);
       if (retval < 0)
@@ -365,6 +368,7 @@ Maxmatch *calc_maxmatches(const GtStrArray *seq,
       {
         GtUword i = 0;
         match = 0;
+        GtUword maxmm = querylen;
         while (i < querylen)
         {
           totallength = gt_encseq_total_length(suffixarray->encseq);
@@ -374,15 +378,14 @@ Maxmatch *calc_maxmatches(const GtStrArray *seq,
                                                     suffixarray->suftab,
                                                     &query[i],
                                                     querylen-i);
-
-          if (maxpreflength == 0 || maxpreflength == querylen)
+          if (maxpreflength == querylen)
           {
             break;
           }
           match++;
           i = i + maxpreflength + 1; /* + 1? */
         }
-        score->dist[queryunitnum] = match;
+        score->dist[queryunitnum] = (double)(maxmm-match)/(double)maxmm;
       }
     }
     gt_seq_iterator_delete(seqit);

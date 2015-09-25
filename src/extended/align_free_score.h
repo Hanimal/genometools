@@ -2,8 +2,8 @@
 #define ALIGN_FREE_SCORE_H
 
 typedef struct{
-  GtUword *dist,
-          numofseq;
+  double *dist;
+  GtUword numofseq;
 }Maxmatch;
 
 double **calc_fscore(const GtEncseq *encseq_first,
@@ -12,7 +12,7 @@ double **calc_fscore(const GtEncseq *encseq_first,
                      GtUword k,
                      GtError *err);
 
-GtUword **calc_qgram(const GtEncseq *encseq_first,
+double **calc_qgram(const GtEncseq *encseq_first,
                      const GtEncseq *encseq_second,
                      GtUword r,
                      GtUword q,
