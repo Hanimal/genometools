@@ -30,7 +30,7 @@ printf("\n");*/
 
 #include "align_free_score.h"
 
-typedef uint32_t GtKmercount;
+typedef uint16_t GtKmercount;
 
 GtKmercount** kmer_profile_table_new(GtUword numofsequences,
                                      GtUword r,
@@ -94,7 +94,8 @@ double **calc_qgram(const GtEncseq *encseq_first,
   GtUword numofseqfirst,
           numofseqsecond,
           i, j, l, range;
-  double **score;
+  double **score,
+         x = 0;
   GtKmercount **tu,
               **tv;
   bool compare = true;
@@ -146,6 +147,8 @@ double **calc_qgram(const GtEncseq *encseq_first,
         GtUword length_v = gt_encseq_seqlength(encseq_second, j);
         GtUword qmax = (length_u-q+1)+(length_v-q+1);
         score[i][j] = (double)(qmax-dist)/(double)qmax;
+        double tmp = (double)(length_u+length_v)/(double)(range);
+        x = MAX(tmp,x);
       }
     }
   }
@@ -157,6 +160,10 @@ double **calc_qgram(const GtEncseq *encseq_first,
   {
     kmer_profile_table_delete(tv);
     kmer_profile_table_delete(tu);
+  }
+  if(!distance)
+  {
+    printf("x:%.3f\n", x);
   }
   return score;
 }
