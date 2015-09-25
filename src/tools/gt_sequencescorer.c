@@ -310,7 +310,7 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
         }
         else
         {
-          printf("Qgramdistance between sequence "GT_WU" and "GT_WU" "\
+          printf("Qgramscore between sequence "GT_WU" and "GT_WU" "\
                  "is %.3f\n", i, j, score[i][j]);
         }
       }
@@ -384,7 +384,7 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
         {
           if(arguments->distance)
           {
-            printf("Maxmatchesscore in sequence "GT_WU" is %.0f\n", 
+            printf("Maxmatchesdistance in sequence "GT_WU" is %.0f\n", 
                    i, score->dist[i]);
           }
           else
