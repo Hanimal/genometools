@@ -88,6 +88,7 @@ double **calc_qgram(const GtEncseq *encseq_first,
                      const GtEncseq *encseq_second,
                      GtUword r,
                      GtUword q,
+                     bool distance,
                      GtError *err)
 {
   GtUword numofseqfirst,
@@ -127,7 +128,7 @@ double **calc_qgram(const GtEncseq *encseq_first,
     GtUword startidx = (!compare)? i+1 : 0;
     for (j = startidx; j < numofseqsecond; j++)
     {
-      GtUword dist = 0;
+      double dist = 0;
       for (l = 0; l < range; l++)
       {
         if (tu[i][l] > 0 || tv[j][l] > 0)
@@ -135,10 +136,17 @@ double **calc_qgram(const GtEncseq *encseq_first,
           dist += abs(tu[i][l] - tv[j][l]);
         }
       }
-      GtUword length_u = gt_encseq_seqlength(encseq_first, i);
-      GtUword length_v = gt_encseq_seqlength(encseq_second, j);
-      GtUword qmax = (length_u-q+1)+(length_v-q+1);
-      score[i][j] = (double)(qmax-dist)/(double)qmax;
+      if(distance)
+      {
+        score[i][j] = dist;
+      }
+      else
+      {
+        GtUword length_u = gt_encseq_seqlength(encseq_first, i);
+        GtUword length_v = gt_encseq_seqlength(encseq_second, j);
+        GtUword qmax = (length_u-q+1)+(length_v-q+1);
+        score[i][j] = (double)(qmax-dist)/(double)qmax;
+      }
     }
   }
   if (!compare)
@@ -319,6 +327,7 @@ GtWord **calc_edist(const GtEncseq *encseq_first,
 
 Maxmatch *calc_maxmatches(const GtStrArray *seq,
                           const Suffixarray *suffixarray,
+                          bool distance,
                           GtError *err)
 {
   GtSeqIterator *seqit;
@@ -326,7 +335,6 @@ Maxmatch *calc_maxmatches(const GtStrArray *seq,
   GtUword totallength,
           maxpreflength = 0,
           queryunitnum,
-          match,
           size = 10,
           querylen;
   Maxmatch *score;
@@ -367,8 +375,7 @@ Maxmatch *calc_maxmatches(const GtStrArray *seq,
       if (!haserr)
       {
         GtUword i = 0;
-        match = 0;
-        GtUword maxmm = querylen;
+        GtUword match = 0;
         while (i < querylen)
         {
           totallength = gt_encseq_total_length(suffixarray->encseq);
@@ -385,7 +392,14 @@ Maxmatch *calc_maxmatches(const GtStrArray *seq,
           match++;
           i = i + maxpreflength + 1; /* + 1? */
         }
-        score->dist[queryunitnum] = (double)(maxmm-match)/(double)maxmm;
+        if(distance)
+        {
+          score->dist[queryunitnum] = match;
+        }
+        else
+        {
+         score->dist[queryunitnum] = (double)(querylen-match)/(double)querylen;
+        }
       }
     }
     gt_seq_iterator_delete(seqit);

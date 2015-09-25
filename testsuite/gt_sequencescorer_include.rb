@@ -78,7 +78,7 @@ Test do
   run "#{$bin}gt encseq encode -smap TransProt7 #{$testdata}sw100K1.fsa"
   run "#{$bin}gt encseq encode -smap TransProt7 #{$testdata}sw100K2.fsa"
   run "#{$bin}gt scorer -qgram -ii sw100K1.fsa "\
-      "sw100K2.fsa -q 4"
+      "sw100K2.fsa -q 4 -distance"
   run "diff -B #{last_stdout} #{$testdata}sequencescorerCompare_TransProt7_q4.out"
 end
 
@@ -88,7 +88,7 @@ Test do
   run "#{$bin}gt encseq encode -smap TransProt11 #{$testdata}sw100K1.fsa"
   run "#{$bin}gt encseq encode -smap TransProt11 #{$testdata}sw100K2.fsa"
   run "#{$bin}gt scorer -qgram -ii sw100K1.fsa "\
-      "sw100K2.fsa -q 5"
+      "sw100K2.fsa -q 5 -distance"
   run "diff -B #{last_stdout} #{$testdata}sequencescorerCompare_TransProt11_q5.out"
 end
 
@@ -135,7 +135,7 @@ Test do
   outfile.close
   run "#{$bin}gt encseq encode -smap TransProt7 #{$testdata}sw100K1.fsa"
   run "#{$bin}gt encseq encode -smap TransProt7 #{$testdata}sw100K2.fsa"
-  run "#{$bin}gt scorer -qgram -ii sw100K1.fsa sw100K2.fsa -q 4"
+  run "#{$bin}gt scorer -qgram -ii sw100K1.fsa sw100K2.fsa -q 4 -distance"
   outfile = File.new("#{last_stdout}", "r")
   qgramarray = outfile.readlines
   outfile.close
@@ -184,7 +184,7 @@ Test do
   run "#{$bin}gt suffixerator -db FirstSeq.txt -suf -tis -smap TransProt7 "\
       "-des no -md5 no -sds no"
   run "#{$bin}gt scorer -maxmatches -ii FirstSeq.txt "\
-      "-seq data.fas"
+      "-seq data.fas -distance"
   maxmatches = File.new("#{last_stdout}", "r")
   mmarray = maxmatches.readlines
   maxmatches.close
