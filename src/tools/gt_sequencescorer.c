@@ -36,6 +36,7 @@ typedef struct
   bool fscore;
   bool qgram;
   bool maxmatches;
+  bool distance;
   GtStr *scorematrix;
   GtStrArray *queryfiles;
   GtStrArray *seq;
@@ -72,7 +73,7 @@ static GtOptionParser* gt_sequencescorer_option_parser_new(void *tool_arguments)
 
   GtOptionParser *op;
   GtOption *k, *q, *fscore, *queryoption, *qgram, *edist, *scorematrix,
-           *indelscore, *maxmatches, *seq;
+           *indelscore, *maxmatches, *seq, *distance;
   gt_assert(arguments);
 
   /* init */
@@ -122,6 +123,12 @@ static GtOptionParser* gt_sequencescorer_option_parser_new(void *tool_arguments)
   seq = gt_option_new_filename_array("seq", "Specify Sequencefiles",
                                     arguments->seq);
   gt_option_parser_add_option(op, seq);
+  
+  /*==========*/
+  distance = gt_option_new_bool("distance", "calculates distance instead of scores",
+                              &arguments->distance, false);
+  gt_option_parser_add_option(op, distance);
+  
 
   gt_option_imply(fscore, k);
   gt_option_imply(edist, scorematrix);
@@ -280,6 +287,7 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
                        encseq_second,
                        r,
                        arguments->q,
+                       arguments->distance,
                        err);
     numofseqfirst = gt_encseq_num_of_sequences(encseq_first);
     if (!compare)
@@ -295,8 +303,16 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
       GtUword startidx = (!compare)? i+1 : 0;
       for (j = startidx; j < numofseqsecond; j++)
       {
-        printf("Qgramdistance between sequence "GT_WU" and "GT_WU" "\
-               "is %.3f\n", i, j, score[i][j]);
+        if(arguments->distance)
+        {
+          printf("Qgramdistance between sequence "GT_WU" and "GT_WU" "\
+                 "is %.0f\n", i, j, score[i][j]);
+        }
+        else
+        {
+          printf("Qgramdistance between sequence "GT_WU" and "GT_WU" "\
+                 "is %.3f\n", i, j, score[i][j]);
+        }
       }
     }
     gt_array2dim_delete(score);
@@ -356,6 +372,7 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
     gt_error_check(err);
     score = calc_maxmatches(arguments->seq,
                             &suffixarray,
+                            arguments->distance,
                             err);
     if (!score)
     {
@@ -365,8 +382,16 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
     {
         for (i = 0; i < score->numofseq; i++)
         {
-          printf("Maxmatchesscore in sequence "GT_WU" is %.3f\n", 
-                 i, score->dist[i]);
+          if(arguments->distance)
+          {
+            printf("Maxmatchesscore in sequence "GT_WU" is %.0f\n", 
+                   i, score->dist[i]);
+          }
+          else
+          {
+            printf("Maxmatchesscore in sequence "GT_WU" is %.3f\n", 
+                   i, score->dist[i]);
+          }
         }
         gt_free(score->dist);
         gt_free(score);

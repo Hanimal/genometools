@@ -16,6 +16,7 @@ double **calc_qgram(const GtEncseq *encseq_first,
                      const GtEncseq *encseq_second,
                      GtUword r,
                      GtUword q,
+                     bool distance,
                      GtError *err);
 
 GtWord **calc_edist(const GtEncseq *encseq_first,
@@ -26,5 +27,6 @@ GtWord **calc_edist(const GtEncseq *encseq_first,
 
 Maxmatch *calc_maxmatches(const GtStrArray *seq,
                           const Suffixarray *suffixarray,
+                          bool distance,
                           GtError *err);
 #endif
