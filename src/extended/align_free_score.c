@@ -15,6 +15,7 @@ printf("\n");*/
 #include <limits.h>
 #include <math.h>
 #include <stdbool.h>
+#include <float.h>
 #include "match/esa-splititv.h"
 #include "match/sfx-mappedstr.h"
 #include "core/encseq_api.h"
@@ -95,7 +96,7 @@ double **calc_qgram(const GtEncseq *encseq_first,
           numofseqsecond,
           i, j, l, range;
   double **score,
-         x = 0;
+         x = DBL_MAX;
   GtKmercount **tu,
               **tv;
   bool compare = true;
@@ -147,8 +148,9 @@ double **calc_qgram(const GtEncseq *encseq_first,
         GtUword length_v = gt_encseq_seqlength(encseq_second, j);
         GtUword qmax = (length_u-q+1)+(length_v-q+1);
         score[i][j] = (double)(qmax-dist)/(double)qmax;
-        double tmp = (double)(length_u+length_v)/(double)(range);
-        x = MAX(tmp,x);
+        double tmp = (double)(length_u*length_v) /
+                     (double)(length_u+length_v+range);
+        x = MIN(tmp,x);
       }
     }
   }
