@@ -38,6 +38,9 @@ typedef struct
   bool maxmatches;
   bool distance;
   bool file;
+  bool affine;
+  int gapopen;
+  int gapextend;
   GtStr *scorematrix;
   GtStrArray *queryfiles;
   GtStrArray *seq;
@@ -74,7 +77,8 @@ static GtOptionParser* gt_sequencescorer_option_parser_new(void *tool_arguments)
 
   GtOptionParser *op;
   GtOption *k, *q, *fscore, *queryoption, *qgram, *edist, *scorematrix,
-           *indelscore, *maxmatches, *seq, *distance, *file;
+           *indelscore, *maxmatches, *seq, *distance, *file, *affine,
+           *gapopen, *gapextend;
   gt_assert(arguments);
 
   /* init */
@@ -107,7 +111,16 @@ static GtOptionParser* gt_sequencescorer_option_parser_new(void *tool_arguments)
   scorematrix = gt_option_new_filename("smatrix", "Specify Scorematrix",
                                        arguments->scorematrix);
   gt_option_parser_add_option(op, scorematrix);
-
+  affine = gt_option_new_bool("affine", "calculates the affine editdistance",
+                              &arguments->affine, false);
+  gt_option_parser_add_option(op, affine);
+  gapopen = gt_option_new_int_min("gapopen", "set gapopen penalty",
+                                  &arguments->gapopen, 0, INT_MIN);
+  gt_option_parser_add_option(op, gapopen);
+  gapextend = gt_option_new_int_min("gapextend", "set gapextention penalty",
+                                     &arguments->gapextend, -4, INT_MIN);
+  gt_option_parser_add_option(op, gapextend);
+   
   /*qgram*/
   qgram = gt_option_new_bool("qgram", "computes qgram distance",
                               &arguments->qgram, false);
@@ -134,12 +147,11 @@ static GtOptionParser* gt_sequencescorer_option_parser_new(void *tool_arguments)
                               &arguments->file, false);
   gt_option_parser_add_option(op, file);
   
-  
-  
-
   gt_option_imply(fscore, k);
   gt_option_imply(edist, scorematrix);
-  gt_option_imply(edist, indelscore);
+  gt_option_imply_either_2(edist, indelscore, affine);
+  gt_option_imply(affine, gapopen);
+  gt_option_imply(affine, gapextend);
   gt_option_imply(qgram, q);
   gt_option_imply(maxmatches, seq);
   return op;
@@ -380,11 +392,23 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
             
     gt_assert(encseq_first && encseq_second);
     gt_error_check(err);
-    score = calc_edist(encseq_first,
-                       encseq_second,
-                       arguments->scorematrix,
-                       arguments->indelscore,
-                       err);
+    if (arguments->affine)
+    {
+      score = calc_edist_affine(encseq_first,
+                                encseq_second,
+                                arguments->scorematrix,
+                                arguments->gapopen,
+                                arguments->gapextend,
+                                err);
+    }
+    else
+    {
+      score = calc_edist(encseq_first,
+                         encseq_second,
+                         arguments->scorematrix,
+                         arguments->indelscore,
+                         err);
+    }
     if (!score)
     {
       gt_error_set(err,"Error computing Editdistance\n");
