@@ -6,6 +6,19 @@ typedef struct{
   GtUword numofseq;
 }Maxmatch;
 
+typedef struct{
+    double value;
+    bool minRep;
+    bool minIns;
+    bool minDel;
+}Entry;
+
+typedef struct{
+    Entry del;
+    Entry ins;
+    Entry rep;
+}AffineNode;
+
 double **calc_fscore(const GtEncseq *encseq_first,
                      const GtEncseq *encseq_second,
                      GtUword r,
@@ -29,4 +42,11 @@ Maxmatch *calc_maxmatches(const GtStrArray *seq,
                           const Suffixarray *suffixarray,
                           bool distance,
                           GtError *err);
+                        
+GtWord **calc_edist_affine(const GtEncseq *encseq_first,
+                           const GtEncseq *encseq_second,
+                           GtStr *scorematrix,
+                           int gapopen,
+                           int gapextend,
+                           GtError *err);
 #endif
