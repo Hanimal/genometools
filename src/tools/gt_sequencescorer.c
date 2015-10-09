@@ -120,7 +120,7 @@ static GtOptionParser* gt_sequencescorer_option_parser_new(void *tool_arguments)
   gapextend = gt_option_new_int_min("gapextend", "set gapextention penalty",
                                      &arguments->gapextend, -4, INT_MIN);
   gt_option_parser_add_option(op, gapextend);
-   
+
   /*qgram*/
   qgram = gt_option_new_bool("qgram", "computes qgram distance",
                               &arguments->qgram, false);
@@ -137,16 +137,16 @@ static GtOptionParser* gt_sequencescorer_option_parser_new(void *tool_arguments)
   seq = gt_option_new_filename_array("seq", "Specify Sequencefiles",
                                     arguments->seq);
   gt_option_parser_add_option(op, seq);
-  
+
   /*==========*/
   distance = gt_option_new_bool("distance", "calculates distance instead of scores",
                               &arguments->distance, false);
   gt_option_parser_add_option(op, distance);
-  
+
   file = gt_option_new_bool("file", "writes output to csv-table",
                               &arguments->file, false);
   gt_option_parser_add_option(op, file);
-  
+
   gt_option_imply(fscore, k);
   gt_option_imply(edist, scorematrix);
   gt_option_imply_either_2(edist, indelscore, affine);
@@ -199,13 +199,13 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
 {
   GtSequencescorerArguments *arguments = tool_arguments;
   int haserr = 0;
-  
+
   gt_error_check(err);
   gt_assert(arguments);
 
   GtEncseq *encseq_first = NULL;
   GtEncseq *encseq_second = NULL;
-  
+
   if (!arguments->maxmatches)
   {
     if (gt_str_array_size(arguments->queryfiles) > 2)
@@ -215,7 +215,7 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
     }
     else if (gt_str_array_size(arguments->queryfiles) == 1)
     {
-      encseq_first = get_encseq(gt_str_array_get(arguments->queryfiles, 0), 
+      encseq_first = get_encseq(gt_str_array_get(arguments->queryfiles, 0),
                                                  err);
       if (!encseq_first)
       {
@@ -226,7 +226,7 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
     }
     else
     {
-      encseq_first = get_encseq(gt_str_array_get(arguments->queryfiles, 0), 
+      encseq_first = get_encseq(gt_str_array_get(arguments->queryfiles, 0),
                                                  err);
       if (!encseq_first)
       {
@@ -234,7 +234,7 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
                           gt_str_array_get(arguments->queryfiles,0));
         haserr = true;
       }
-      encseq_second = get_encseq(gt_str_array_get(arguments->queryfiles, 1), 
+      encseq_second = get_encseq(gt_str_array_get(arguments->queryfiles, 1),
                                                   err);
       if (!encseq_second)
       {
@@ -266,7 +266,7 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
             numofseqsecond,
             r, i, j;
     gt_assert(encseq_first && encseq_second);
-    gt_error_check(err);  
+    gt_error_check(err);
     r = gt_alphabet_size(gt_encseq_alphabet(encseq_first));
     score = calc_fscore(encseq_first,
                         encseq_second,
@@ -282,23 +282,23 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
     {
       numofseqsecond = gt_encseq_num_of_sequences(encseq_second);
     }
-    if(arguments->file)
+    if (arguments->file)
     {
       fp = fopen("fscore.csv", "w");
-      if(!fp)
+      if (!fp)
       {
         gt_error_set(err,"Error writing to file.\n");
         haserr = true;
       }
       fprintf(fp, "Seq1,Seq2,Score\n");
     }
-    gt_error_check(err);  
+    gt_error_check(err);
     for (i = 0; i < numofseqfirst; i++)
     {
       GtUword startidx = (!compare)? i+1 : 0;
       for (j = startidx; j < numofseqsecond; j++)
       {
-        if(arguments->file)
+        if (arguments->file)
         {
           fprintf(fp, GT_WU","GT_WU",%.3f\n", i, j, score[i][j]);
         }
@@ -309,7 +309,7 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
         }
       }
     }
-    if(arguments->file)
+    if (arguments->file)
     {
       fclose(fp);
     }
@@ -322,7 +322,7 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
             numofseqsecond,
             r, i, j;
     double **score;
-            
+
     gt_assert(encseq_first && encseq_second);
     gt_error_check(err);
     r = gt_alphabet_size(gt_encseq_alphabet(encseq_first));
@@ -341,29 +341,29 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
     {
       numofseqsecond = gt_encseq_num_of_sequences(encseq_second);
     }
-    if(arguments->file)
+    if (arguments->file)
     {
       fp = fopen("qgram.csv", "w");
-      if(!fp)
+      if (!fp)
       {
         gt_error_set(err,"Error writing to file.\n");
         haserr = true;
       }
       fprintf(fp, "Seq1,Seq2,Score\n");
     }
-    gt_error_check(err); 
+    gt_error_check(err);
     for (i = 0; i < numofseqfirst; i++)
     {
       GtUword startidx = (!compare)? i+1 : 0;
       for (j = startidx; j < numofseqsecond; j++)
       {
-        if(arguments->file)
+        if (arguments->file)
         {
           fprintf(fp, GT_WU","GT_WU",%.3f\n", i, j, score[i][j]);
         }
         else
         {
-          if(arguments->distance)
+          if (arguments->distance)
           {
             printf("Qgramdistance between sequence "GT_WU" and "GT_WU" "\
                    "is %.0f\n", i, j, score[i][j]);
@@ -376,7 +376,7 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
         }
       }
     }
-    if(arguments->file)
+    if (arguments->file)
     {
       fclose(fp);
     }
@@ -389,7 +389,7 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
     GtUword numofseqfirst,
             numofseqsecond,
             i, j;
-            
+
     gt_assert(encseq_first && encseq_second);
     gt_error_check(err);
     if (arguments->affine)
@@ -424,10 +424,10 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
       {
         numofseqsecond = gt_encseq_num_of_sequences(encseq_second);
       }
-      if(arguments->file)
+      if (arguments->file)
       {
         fp = fopen("edist.csv", "w");
-        if(!fp)
+        if (!fp)
         {
           gt_error_set(err,"Error writing to file.\n");
           haserr = true;
@@ -439,7 +439,7 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
         GtUword startidx = (!compare)? i+1 : 0;
         for (j = startidx; j < numofseqsecond; j++)
         {
-          if(arguments->file)
+          if (arguments->file)
           {
             fprintf(fp, GT_WU","GT_WU","GT_WD"\n", i, j, score[i][j]);
           }
@@ -450,7 +450,7 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
           }
         }
       }
-      if(arguments->file)
+      if (arguments->file)
       {
         fclose(fp);
       }
@@ -481,14 +481,14 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
     {
         for (i = 0; i < score->numofseq; i++)
         {
-          if(arguments->distance)
+          if (arguments->distance)
           {
-              printf("Maxmatchesdistance in sequence "GT_WU" is %.0f\n", 
+              printf("Maxmatchesdistance in sequence "GT_WU" is %.0f\n",
                      i, score->dist[i]);
           }
           else
           {
-            printf("Maxmatchesscore in sequence "GT_WU" is %.3f\n", 
+            printf("Maxmatchesscore in sequence "GT_WU" is %.3f\n",
                    i, score->dist[i]);
           }
         }
