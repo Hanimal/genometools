@@ -138,7 +138,7 @@ double **calc_qgram(const GtEncseq *encseq_first,
           dist += abs(tu[i][l] - tv[j][l]);
         }
       }
-      if(distance)
+      if (distance)
       {
         score[i][j] = dist;
       }
@@ -163,7 +163,7 @@ double **calc_qgram(const GtEncseq *encseq_first,
     kmer_profile_table_delete(tv);
     kmer_profile_table_delete(tu);
   }
-  if(!distance)
+  if (!distance)
   {
     printf("x:%.3f\n", x);
   }
@@ -390,42 +390,42 @@ GtWord **calc_edist_affine(const GtEncseq *encseq_first,
         m = gt_encseq_seqlength(encseq_first,u);
         n = gt_encseq_seqlength(encseq_second,v);
         gt_array2dim_malloc(table, m+1, n+1);
-        
+
         table[0][0].del.value = 0;
         table[0][0].ins.value = 0;
         table[0][0].rep.value = 0;
-        
+
         table[0][0].del.minDel = false;
         table[0][0].del.minIns = false;
         table[0][0].del.minRep = false;
-        
+
         table[0][0].ins.minDel = false;
         table[0][0].ins.minIns = false;
         table[0][0].ins.minRep = false;
-        
+
         table[0][0].rep.minDel = false;
         table[0][0].rep.minIns = false;
         table[0][0].rep.minRep = false;
-        
+
         for (i = 1; i <= m; i++)
         {
           table[i][0].rep.value = DBL_MAX;
           table[i][0].rep.minDel = false;
           table[i][0].rep.minIns = false;
           table[i][0].rep.minRep = false;
-          
+
           table[i][0].ins.value = DBL_MAX;
           table[i][0].ins.minDel = false;
           table[i][0].ins.minIns = false;
           table[i][0].ins.minRep = false;
-          
+
           indel = table[i-1][0].del.value + gapextend;
           inrep = table[i-1][0].rep.value + gapopen + gapextend;
           inins= table[i-1][0].ins.value + gapopen + gapextend;
           tmp = MAX(indel, inrep);
           maximum = MAX(tmp, inins);
           table[i][0].del.value = maximum;
-          
+
           table[i][0].del.minDel = (maximum == indel);
           table[i][0].del.minIns = (maximum == inins);
           table[i][0].del.minRep = (maximum == inrep);
@@ -441,7 +441,7 @@ GtWord **calc_edist_affine(const GtEncseq *encseq_first,
               table[i][j].rep.minDel = false;
               table[i][j].rep.minIns = false;
               table[i][j].rep.minRep = false;
-                
+
             }
             else
             {
@@ -454,15 +454,15 @@ GtWord **calc_edist_affine(const GtEncseq *encseq_first,
               GtUchar code1 = gt_alphabet_encode(alpha, one);
               GtUchar code2 = gt_alphabet_encode(alpha, two);
               int alignScore = gt_score_matrix_get_score(smatrix, code1, code2);
-              
+
               indel = table[i-1][j-1].del.value + alignScore;
               inrep = table[i-1][j-1].rep.value + alignScore;
               inins = table[i-1][j-1].ins.value + alignScore;
-              
+
               tmp = MAX(indel, inrep);
               maximum = MAX(tmp, inins);
               table[i][j].rep.value = maximum;
-              
+
               table[i][j].rep.minDel = (maximum == indel);
               table[i][j].rep.minIns = (maximum == inins);
               table[i][j].rep.minRep = (maximum == inrep);
@@ -479,11 +479,11 @@ GtWord **calc_edist_affine(const GtEncseq *encseq_first,
               indel = table[i-1][j].del.value + gapextend;
               inrep = table[i-1][j].rep.value + gapopen + gapextend;
               inins = table[i-1][j].ins.value + gapopen + gapextend;
-              
+
               tmp = MAX(indel, inrep);
               maximum = MAX(tmp, inins);
               table[i][j].del.value = maximum;
-              
+
               table[i][j].del.minDel = (maximum == indel);
               table[i][j].del.minIns = (maximum == inins);
               table[i][j].del.minRep = (maximum == inrep);
@@ -500,11 +500,11 @@ GtWord **calc_edist_affine(const GtEncseq *encseq_first,
               indel = table[i][j-1].del.value + gapopen + gapextend;
               inrep = table[i][j-1].rep.value + gapopen + gapextend;
               inins = table[i][j-1].ins.value + gapextend;
-              
+
               tmp = MAX(indel, inrep);
               maximum = MAX(tmp, inins);
               table[i][j].ins.value = maximum;
-              
+
               table[i][j].ins.minDel = (maximum == indel);
               table[i][j].ins.minIns = (maximum == inins);
               table[i][j].ins.minRep = (maximum == inrep);

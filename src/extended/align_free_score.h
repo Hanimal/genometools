@@ -42,7 +42,7 @@ Maxmatch *calc_maxmatches(const GtStrArray *seq,
                           const Suffixarray *suffixarray,
                           bool distance,
                           GtError *err);
-                        
+
 GtWord **calc_edist_affine(const GtEncseq *encseq_first,
                            const GtEncseq *encseq_second,
                            GtStr *scorematrix,
