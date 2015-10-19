@@ -34,6 +34,7 @@ typedef struct
   int indelscore;
   bool edist;
   bool fscore;
+  bool fraction;
   bool qgram;
   bool maxmatches;
   bool distance;
@@ -78,7 +79,7 @@ static GtOptionParser* gt_sequencescorer_option_parser_new(void *tool_arguments)
   GtOptionParser *op;
   GtOption *k, *q, *fscore, *queryoption, *qgram, *edist, *scorematrix,
            *indelscore, *maxmatches, *seq, *distance, *file, *affine,
-           *gapopen, *gapextend;
+           *gapopen, *gapextend, *fraction;
   gt_assert(arguments);
 
   /* init */
@@ -99,6 +100,9 @@ static GtOptionParser* gt_sequencescorer_option_parser_new(void *tool_arguments)
   gt_option_parser_add_option(op, fscore);
   k = gt_option_new_uint_min("k","length of kmer", &arguments->k, 6, 1);
   gt_option_parser_add_option(op, k);
+  fraction = gt_option_new_bool("fraction", "computes kmer distance Y",
+                              &arguments->fraction, false);
+  gt_option_parser_add_option(op, fraction);
 
   /*edist*/
   edist = gt_option_new_bool("edist", "computes editdistance",
@@ -272,6 +276,7 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
                         encseq_second,
                         r,
                         arguments->k,
+                        arguments->fraction,
                         err);
     numofseqfirst = gt_encseq_num_of_sequences(encseq_first);
     if (!compare)

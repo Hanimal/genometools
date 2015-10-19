@@ -23,6 +23,7 @@ double **calc_fscore(const GtEncseq *encseq_first,
                      const GtEncseq *encseq_second,
                      GtUword r,
                      GtUword k,
+                     bool fraction,
                      GtError *err);
 
 double **calc_qgram(const GtEncseq *encseq_first,

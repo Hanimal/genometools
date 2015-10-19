@@ -174,6 +174,7 @@ double **calc_fscore(const GtEncseq *encseq_first,
                      const GtEncseq *encseq_second,
                      GtUword r,
                      GtUword k,
+                     bool fraction,
                      GtError *err)
 {
   GtUword numofseqfirst,
@@ -225,7 +226,14 @@ double **calc_fscore(const GtEncseq *encseq_first,
       GtUword length_u = gt_encseq_seqlength(encseq_first, i);
       GtUword length_v = gt_encseq_seqlength(encseq_second, j);
       double dist = (double)tmp/(double)(MIN(length_u, length_v)-k+1);
-      score[i][j] = dist;
+      if (fraction)
+      {
+        score[i][j] = log(0.1 + dist);
+      }
+      else
+      {
+        score[i][j] = dist;
+      }
     }
   }
   if (!compare)
