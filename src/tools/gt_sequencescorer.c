@@ -38,11 +38,11 @@ typedef struct
   bool qgram;
   bool maxmatches;
   bool distance;
-  bool file;
   bool affine;
   int gapopen;
   int gapextend;
   GtStr *scorematrix;
+  GtStr *file;
   GtStrArray *queryfiles;
   GtStrArray *seq;
 } GtSequencescorerArguments;
@@ -56,6 +56,7 @@ static void* gt_sequencescorer_arguments_new(void)
   arguments->queryfiles = gt_str_array_new();
   arguments->seq = gt_str_array_new();
   arguments->scorematrix = gt_str_new();
+  arguments->file = gt_str_new();
   return arguments;
 }
 
@@ -68,6 +69,7 @@ static void gt_sequencescorer_arguments_delete(void *tool_arguments)
     gt_str_array_delete(arguments->queryfiles);
     gt_str_array_delete(arguments->seq);
     gt_str_delete(arguments->scorematrix);
+    gt_str_delete(arguments->file);
     gt_free(arguments);
   }
 }
@@ -147,8 +149,8 @@ static GtOptionParser* gt_sequencescorer_option_parser_new(void *tool_arguments)
                               &arguments->distance, false);
   gt_option_parser_add_option(op, distance);
 
-  file = gt_option_new_bool("file", "writes output to csv-table",
-                              &arguments->file, false);
+  file = gt_option_new_filename("file", "Specify Outputfile",
+                                arguments->file);
   gt_option_parser_add_option(op, file);
 
   gt_option_imply(fscore, k);
@@ -289,7 +291,7 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
     }
     if (arguments->file)
     {
-      fp = fopen("fscore.csv", "w");
+      fp = fopen(gt_str_get(arguments->file), "w");
       if (!fp)
       {
         gt_error_set(err,"Error writing to file.\n");
@@ -348,7 +350,7 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
     }
     if (arguments->file)
     {
-      fp = fopen("qgram.csv", "w");
+      fp = fopen(gt_str_get(arguments->file), "w");
       if (!fp)
       {
         gt_error_set(err,"Error writing to file.\n");
@@ -431,7 +433,7 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
       }
       if (arguments->file)
       {
-        fp = fopen("edist.csv", "w");
+        fp = fopen(gt_str_get(arguments->file), "w");
         if (!fp)
         {
           gt_error_set(err,"Error writing to file.\n");
