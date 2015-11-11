@@ -36,7 +36,7 @@ double **calc_qgram(const GtEncseq *encseq_first,
 GtWord **calc_edist(const GtEncseq *encseq_first,
                     const GtEncseq *encseq_second,
                     GtStr *scorematrix,
-                    int indelscore,
+                    double indelscore,
                     GtError *err);
 
 Maxmatch *calc_maxmatches(const GtStrArray *seq,
@@ -47,7 +47,7 @@ Maxmatch *calc_maxmatches(const GtStrArray *seq,
 GtWord **calc_edist_affine(const GtEncseq *encseq_first,
                            const GtEncseq *encseq_second,
                            GtStr *scorematrix,
-                           int gapopen,
-                           int gapextend,
+                           double gapopen,
+                           double gapextend,
                            GtError *err);
 #endif

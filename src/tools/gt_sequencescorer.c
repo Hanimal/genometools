@@ -23,7 +23,7 @@
 #include "core/assert_api.h"
 #include "core/array2dim_api.h"
 #include "match/esa-map.h"
-
+#include <float.h>
 #include "tools/gt_sequencescorer.h"
 #include "extended/align_free_score.h"
 
@@ -31,7 +31,7 @@ typedef struct
 {
   unsigned int k;
   unsigned int q;
-  int indelscore;
+  double indelscore;
   bool edist;
   bool fscore;
   bool fraction;
@@ -39,10 +39,10 @@ typedef struct
   bool maxmatches;
   bool distance;
   bool affine;
-  int gapopen;
-  int gapextend;
+  double gapopen;
+  double gapextend;
   GtStr *scorematrix;
-  GtStr *file;
+  GtStr *outfile;
   GtStrArray *queryfiles;
   GtStrArray *seq;
 } GtSequencescorerArguments;
@@ -56,7 +56,7 @@ static void* gt_sequencescorer_arguments_new(void)
   arguments->queryfiles = gt_str_array_new();
   arguments->seq = gt_str_array_new();
   arguments->scorematrix = gt_str_new();
-  arguments->file = gt_str_new();
+  arguments->outfile = gt_str_new();
   return arguments;
 }
 
@@ -69,7 +69,7 @@ static void gt_sequencescorer_arguments_delete(void *tool_arguments)
     gt_str_array_delete(arguments->queryfiles);
     gt_str_array_delete(arguments->seq);
     gt_str_delete(arguments->scorematrix);
-    gt_str_delete(arguments->file);
+    gt_str_delete(arguments->outfile);
     gt_free(arguments);
   }
 }
@@ -80,8 +80,8 @@ static GtOptionParser* gt_sequencescorer_option_parser_new(void *tool_arguments)
 
   GtOptionParser *op;
   GtOption *k, *q, *fscore, *queryoption, *qgram, *edist, *scorematrix,
-           *indelscore, *maxmatches, *seq, *distance, *file, *affine,
-           *gapopen, *gapextend, *fraction;
+           *indelscore, *maxmatches, *seq, *distance, *affine,
+           *gapopen, *gapextend, *fraction, *outfile;
   gt_assert(arguments);
 
   /* init */
@@ -95,6 +95,13 @@ static GtOptionParser* gt_sequencescorer_option_parser_new(void *tool_arguments)
                                              arguments->queryfiles);
   gt_option_parser_add_option(op, queryoption);
   gt_option_is_mandatory(queryoption);
+  distance = gt_option_new_bool("distance", "calculates distance instead of scores",
+                              &arguments->distance, false);
+  gt_option_parser_add_option(op, distance);
+
+  outfile = gt_option_new_filename("outfile", "Specify Outputfile",
+                                arguments->outfile);
+  gt_option_parser_add_option(op, outfile);
 
   /*fscore*/
   fscore = gt_option_new_bool("fscore", "computes fscore",
@@ -110,9 +117,9 @@ static GtOptionParser* gt_sequencescorer_option_parser_new(void *tool_arguments)
   edist = gt_option_new_bool("edist", "computes editdistance",
                               &arguments->edist, false);
   gt_option_parser_add_option(op, edist);
-  indelscore = gt_option_new_int_min("indelscore",
+  indelscore = gt_option_new_double_min("indelscore",
                                      "set score for inserstion or deletion",
-                                     &arguments->indelscore, -4, INT_MIN);
+                                     &arguments->indelscore, -4.0, -DBL_MAX);
   gt_option_parser_add_option(op, indelscore);
   scorematrix = gt_option_new_filename("smatrix", "Specify Scorematrix",
                                        arguments->scorematrix);
@@ -120,11 +127,11 @@ static GtOptionParser* gt_sequencescorer_option_parser_new(void *tool_arguments)
   affine = gt_option_new_bool("affine", "calculates the affine editdistance",
                               &arguments->affine, false);
   gt_option_parser_add_option(op, affine);
-  gapopen = gt_option_new_int_min("gapopen", "set gapopen penalty",
-                                  &arguments->gapopen, 0, INT_MIN);
+  gapopen = gt_option_new_double_min("gapopen", "set gapopen penalty",
+                                  &arguments->gapopen, -10.0, -DBL_MAX);
   gt_option_parser_add_option(op, gapopen);
-  gapextend = gt_option_new_int_min("gapextend", "set gapextention penalty",
-                                     &arguments->gapextend, -4, INT_MIN);
+  gapextend = gt_option_new_double_min("gapextend", "set gapextention penalty",
+                                     &arguments->gapextend, -0.5, -DBL_MAX);
   gt_option_parser_add_option(op, gapextend);
 
   /*qgram*/
@@ -145,13 +152,6 @@ static GtOptionParser* gt_sequencescorer_option_parser_new(void *tool_arguments)
   gt_option_parser_add_option(op, seq);
 
   /*==========*/
-  distance = gt_option_new_bool("distance", "calculates distance instead of scores",
-                              &arguments->distance, false);
-  gt_option_parser_add_option(op, distance);
-
-  file = gt_option_new_filename("file", "Specify Outputfile",
-                                arguments->file);
-  gt_option_parser_add_option(op, file);
 
   gt_option_imply(fscore, k);
   gt_option_imply(edist, scorematrix);
@@ -271,6 +271,7 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
     GtUword numofseqfirst,
             numofseqsecond,
             r, i, j;
+    bool fileset = false;
     gt_assert(encseq_first && encseq_second);
     gt_error_check(err);
     r = gt_alphabet_size(gt_encseq_alphabet(encseq_first));
@@ -289,9 +290,10 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
     {
       numofseqsecond = gt_encseq_num_of_sequences(encseq_second);
     }
-    if (arguments->file)
+    if (gt_str_length(arguments->outfile) != 0)
     {
-      fp = fopen(gt_str_get(arguments->file), "w");
+      fileset = true;
+      fp = fopen(gt_str_get(arguments->outfile), "w");
       if (!fp)
       {
         gt_error_set(err,"Error writing to file.\n");
@@ -305,7 +307,7 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
       GtUword startidx = (!compare)? i+1 : 0;
       for (j = startidx; j < numofseqsecond; j++)
       {
-        if (arguments->file)
+        if (fileset)
         {
           fprintf(fp, GT_WU","GT_WU",%.3f\n", i, j, score[i][j]);
         }
@@ -316,7 +318,7 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
         }
       }
     }
-    if (arguments->file)
+    if (fileset)
     {
       fclose(fp);
     }
@@ -329,7 +331,8 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
             numofseqsecond,
             r, i, j;
     double **score;
-
+    bool fileset = false;
+    
     gt_assert(encseq_first && encseq_second);
     gt_error_check(err);
     r = gt_alphabet_size(gt_encseq_alphabet(encseq_first));
@@ -348,9 +351,10 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
     {
       numofseqsecond = gt_encseq_num_of_sequences(encseq_second);
     }
-    if (arguments->file)
+    if (gt_str_length(arguments->outfile) != 0)
     {
-      fp = fopen(gt_str_get(arguments->file), "w");
+      fileset = true;
+      fp = fopen(gt_str_get(arguments->outfile), "w");
       if (!fp)
       {
         gt_error_set(err,"Error writing to file.\n");
@@ -364,7 +368,7 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
       GtUword startidx = (!compare)? i+1 : 0;
       for (j = startidx; j < numofseqsecond; j++)
       {
-        if (arguments->file)
+        if (fileset)
         {
           fprintf(fp, GT_WU","GT_WU",%.3f\n", i, j, score[i][j]);
         }
@@ -383,7 +387,7 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
         }
       }
     }
-    if (arguments->file)
+    if (fileset)
     {
       fclose(fp);
     }
@@ -396,6 +400,7 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
     GtUword numofseqfirst,
             numofseqsecond,
             i, j;
+    bool fileset = false;
 
     gt_assert(encseq_first && encseq_second);
     gt_error_check(err);
@@ -431,9 +436,10 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
       {
         numofseqsecond = gt_encseq_num_of_sequences(encseq_second);
       }
-      if (arguments->file)
+      if (gt_str_length(arguments->outfile) != 0)
       {
-        fp = fopen(gt_str_get(arguments->file), "w");
+        fileset = true;
+        fp = fopen(gt_str_get(arguments->outfile), "w");
         if (!fp)
         {
           gt_error_set(err,"Error writing to file.\n");
@@ -446,7 +452,7 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
         GtUword startidx = (!compare)? i+1 : 0;
         for (j = startidx; j < numofseqsecond; j++)
         {
-          if (arguments->file)
+          if (fileset)
           {
             fprintf(fp, GT_WU","GT_WU","GT_WD"\n", i, j, score[i][j]);
           }
@@ -457,7 +463,7 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
           }
         }
       }
-      if (arguments->file)
+      if (fileset)
       {
         fclose(fp);
       }
@@ -482,7 +488,7 @@ static int gt_sequencescorer_runner(GT_UNUSED int argc,
                             err);
     if (!score)
     {
-      gt_error_set(err,"Error computing Editdistance\n");
+      gt_error_set(err,"Error computing Maxmatches\n");
     }
     else
     {
