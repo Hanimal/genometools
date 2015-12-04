@@ -51,6 +51,14 @@ Test do
       " sw100K2.fas -q 4", :retval => 1
 end
 
+Name "gt sequencescorer Fileoption"
+Keywords "gt_sequencescorer scorer file"
+Test do
+  run "#{$bin}gt encseq encode -smap TransProt7 #{$testdata}sw100K1.fsa"
+  run "#{$bin}gt scorer -qgram -ii sw100K1.fsa -q 4 -file", :retval => 1
+  run "#{$bin}gt scorer -fscore -ii sw100K1.fsa -k 4 -file", :retval => 1
+end
+
 Name "gt sequencescorer Fileformat"
 Keywords "gt_sequencescorer scorer Fileformat"
 Test do
