@@ -42,9 +42,6 @@ class FastaIterator
   end
 end
 
-
-
-
 Name "gt sequencescorer Alphabet"
 Keywords "gt_sequencescorer scorer alphabet"
 Test do
@@ -73,7 +70,7 @@ Test do
 end
 
 Name "gt sequencescorer Qgramdistance TransProt7"
-Keywords "gt_sequencescorer scorer qgram TransProt7"
+Keywords "gt_sequencescorer scorer qgram"
 Test do
   run "#{$bin}gt encseq encode -smap TransProt7 #{$testdata}sw100K1.fsa"
   run "#{$bin}gt encseq encode -smap TransProt7 #{$testdata}sw100K2.fsa"
@@ -100,7 +97,7 @@ Test do
 end
 
 Name "gt sequencescorer Fscore TransProt7"
-Keywords "gt_sequencescorer scorer fscore TransProt7"
+Keywords "gt_sequencescorer scorer fscore"
 Test do
   run "#{$bin}gt encseq encode -smap TransProt7 #{$testdata}sw100K1.fsa"
   run "#{$bin}gt encseq encode -smap TransProt7 #{$testdata}sw100K2.fsa"
@@ -110,7 +107,7 @@ Test do
   end
   
 Name "gt sequencescorer Fscore TransProt11"
-Keywords "gt_sequencescorer scorer fscore TransProt11"
+Keywords "gt_sequencescorer scorer fscore"
 Test do
   run "#{$bin}gt encseq encode -smap TransProt11 #{$testdata}sw100K1.fsa"
   run "#{$bin}gt encseq encode -smap TransProt11 #{$testdata}sw100K2.fsa"  
@@ -119,6 +116,48 @@ Test do
   run "diff -B #{last_stdout} #{$testdata}sequencescorerCompare_TransProt11_k5.out"
 end 
 
+Name "gt sequencescorer Maxmatches TransProt7"
+Keywords "gt_sequencescorer scorer maxmatches"
+Test do
+  outfile = File.new("maxmatchesout","w")
+  idx = 0
+  `#{$bin}gt encseq encode -smap TransProt7 #{$testdata}sw100K1.fsa`
+  sequencefile = "#{$testdata}sw100K1.fsa".split("/")
+  sequencefile = sequencefile[sequencefile.length-1]
+  data = File.new("data.fas", "w")
+  data << `#{$bin}gt encseq decode #{sequencefile}`
+  data.close
+    
+  fi = FastaIterator.new("data.fas")
+  fi.each do |header,sequence|
+    tmp = File.new("tmp.fas", "w")
+    tmp << ">" << header << "\n"
+    tmp << sequence << "\n"
+    tmp.close
+    `#{$bin}gt suffixerator -db tmp.fas -suf -tis -des no -md5 no -sds no -smap TransProt7`
+    maxmatch = `#{$bin}gt scorer -maxmatches -ii tmp.fas -seq data.fas -distance`
+    maxmatch = maxmatch.split
+    for i in 0...maxmatch.length
+      if(maxmatch[i] == "Maxmatchesdistance" or maxmatch[i] == "in" or \
+         maxmatch[i] == "sequence" or maxmatch[i] == "is")
+        maxmatch.delete(maxmatch[i])
+      end
+    end
+    i = 1
+    while(i < maxmatch.length)
+      if(idx > maxmatch[i-1].to_i)
+        outfile << "Maxmatches from #{maxmatch[i-1]} in #{idx} is #{maxmatch[i]}\n"
+      end
+      i = i + 2
+    end
+    idx = idx + 1
+    `rm tmp.*`    
+  end
+  `rm data.fas`
+  outfile.close
+
+  run "diff -B maxmatchesout #{$testdata}sequencescorerCompare_TransProt7_maxmatches"
+end 
 
 Name "gt sequencescorer Qgramdistance lowerbound"
 Keywords "gt_sequencescorer scorer qgram lowerbound"
